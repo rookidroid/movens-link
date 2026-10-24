@@ -12,9 +12,10 @@ let store: JsonStore
 let settings: Settings
 let win: BrowserWindow | null = null
 
-// No native frame: the page draws its own title strip, TITLE_H px tall (match
-// .titlebar in app.css); the system's window buttons sit over its right end
-// (macOS: its traffic lights over the left end)
+// No native frame: the page draws its own see-through title strip, TITLE_H px
+// tall (match --title-h in app.css), over the 3D view; the system's window
+// buttons sit over its right end on a clear background (macOS: its traffic
+// lights over the left end)
 const TITLE_H = 32
 
 function createWindow() {
@@ -30,7 +31,7 @@ function createWindow() {
     titleBarStyle: 'hidden',
     ...(process.platform === 'darwin'
       ? { trafficLightPosition: { x: 12, y: 9 } }
-      : { titleBarOverlay: { color: '#0a1114', symbolColor: '#a3b1b8', height: TITLE_H } }),
+      : { titleBarOverlay: { color: '#00000000', symbolColor: '#a3b1b8', height: TITLE_H } }),
     webPreferences: {
       preload: join(here, '../preload/index.cjs'),
       contextIsolation: true,

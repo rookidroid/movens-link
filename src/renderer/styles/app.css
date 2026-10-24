@@ -27,9 +27,12 @@ button{font:inherit;color:inherit;cursor:pointer}
 
 /* ── Title strip ───────────────────────────────────────── */
 /* Desktop app only: moves the window (double-click maximizes); the system's
-   window buttons are drawn over its right end, or the left end on macOS */
-.titlebar{flex:none;display:flex;align-items:center;height:var(--title-h);padding:0 150px 0 14px;
-  background:var(--bg);border-bottom:1px solid var(--line);-webkit-app-region:drag;user-select:none}
+   window buttons are drawn over its right end, or the left end on macOS.
+   See-through: the 3D view runs under it to the top of the window, so the
+   strip is part of the HUD rather than a bar above it. */
+.titlebar{position:fixed;top:0;left:0;right:0;z-index:45;display:flex;align-items:center;height:var(--title-h);
+  padding:0 150px 0 14px;background:linear-gradient(rgba(10,17,20,.55),transparent);
+  -webkit-app-region:drag;user-select:none}
 .os-darwin .titlebar{padding:0 14px 0 84px}
 .titlebar-name{font:600 11.5px var(--sans);letter-spacing:.04em;color:var(--ink-3);white-space:nowrap}
 

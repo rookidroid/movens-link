@@ -20,8 +20,8 @@ body{display:flex;flex-direction:column;overflow:hidden}
 
 /* The panels, in a column down each side of the 3D view; the middle stays clear */
 .view{position:absolute;inset:0;pointer-events:none}
-.hud-col{position:absolute;top:12px;display:flex;flex-direction:column;gap:8px;width:fit-content;
-  max-height:calc(100% - 24px);overflow:hidden auto;scrollbar-width:thin;scrollbar-gutter:stable;
+.hud-col{position:absolute;top:calc(var(--title-h) + 12px);display:flex;flex-direction:column;gap:8px;width:fit-content;
+  max-height:calc(100% - var(--title-h) - 24px);overflow:hidden auto;scrollbar-width:thin;scrollbar-gutter:stable;
   scrollbar-color:var(--line-2) transparent;pointer-events:auto}
 .hud-left{left:12px;align-items:flex-start}
 .hud-right{right:2px;align-items:flex-end}
@@ -63,7 +63,7 @@ body{display:flex;flex-direction:column;overflow:hidden}
   flex-direction:column;align-items:center;justify-content:space-between;gap:12px;padding:12px;pointer-events:none}
 .a3-top,.a3-bottom{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0;max-width:100%}
 /* Under the app bar's plate, which sits in the same gap */
-.a3-top{padding-top:calc(var(--bar-h,54px) + 8px)}
+.a3-top{padding-top:calc(var(--title-h) + var(--bar-h,54px) + 8px)}
 .a3-chrome .card,.a3-cams,.a3-msg{pointer-events:auto}
 .a3-opts .grp{display:flex;align-items:center;gap:8px}
 .a3-msg{padding:8px 12px;font-size:12.5px;background:var(--panel);border:1px solid var(--warn);border-left-width:3px;
