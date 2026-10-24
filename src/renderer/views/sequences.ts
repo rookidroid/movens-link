@@ -96,7 +96,7 @@ export function initSequences() {
     const act = t.closest<HTMLElement>('[data-act]')?.dataset.act
     claim()
     if (act) stepAction(i, act)
-    else if (!t.closest('input,select')) { selStep = i; renderSteps(); renderPath() }
+    else if (!t.closest('input,select,label')) { selStep = i; renderSteps(); renderPath() }
   })
   list.addEventListener('focusin', e => {
     const row = (e.target as HTMLElement).closest<HTMLElement>('.step-row')
@@ -251,9 +251,9 @@ function renderSteps() {
   const opts = (sel: string) => lib.positions.map(p =>
     `<option value="${p.id}"${p.id === sel ? ' selected' : ''}>${esc(p.name)}</option>`).join('') +
     (findPosition(sel) ? '' : '<option value="" selected>(missing position)</option>')
-  // A value with its unit; what it is shows as a tooltip
-  const num = (f: string, v: number, unit: string, what: string, attrs = '') =>
-    `<span class="inp sm${unit === '%' ? ' pct' : ''}" title="${what}"><input type="number" data-f="${f}" value="${v}" aria-label="${what}" ${attrs}/><i>${unit}</i></span>`
+  // A labelled value with its unit; the longer description shows as a tooltip
+  const num = (f: string, v: number, unit: string, label: string, what: string, attrs = '') =>
+    `<label class="sf sf-${f}" title="${what}"><span>${label}</span><span class="inp sm"><input type="number" data-f="${f}" value="${v}" ${attrs}/><i>${unit}</i></span></label>`
   const kind = { move: 'Move', gripper: 'Grip', wait: 'Wait' }
   $('steplist').innerHTML = s.steps.length ? s.steps.map((st, i) => `
     <li class="step-row t-${st.type}" data-i="${i}">
@@ -262,13 +262,13 @@ function renderSteps() {
       <span class="stype">${kind[st.type]}</span>
       <div class="sfields">${
         st.type === 'move' ? `
-          <select data-f="positionId" aria-label="Position" title="Position to move to">${opts(st.positionId)}</select>
-          ${num('speed', st.speed, '%', 'Speed', 'min="1" max="100" step="5"')}
-          ${num('dwellMs', st.dwellMs, 'ms', 'Dwell after arriving', 'min="0" step="100"')}` :
+          <label class="sf sf-pos" title="Position to move to"><span>Position</span><select data-f="positionId">${opts(st.positionId)}</select></label>
+          ${num('speed', st.speed, '%', 'Speed', 'Speed, percent of maximum', 'min="1" max="100" step="5"')}
+          ${num('dwellMs', st.dwellMs, 'ms', 'Dwell', 'Dwell after arriving', 'min="0" step="100"')}` :
         st.type === 'gripper' ? `
-          ${num('us', st.us, 'µs', 'Gripper pulse width', `min="${SERVO_MIN}" max="${SERVO_MAX}" step="10"`)}
-          ${num('settleMs', st.settleMs, 'ms', 'Settle time', 'min="0" step="100"')}` : `
-          ${num('ms', st.ms, 'ms', 'Wait', 'min="0" step="100"')}`}
+          ${num('us', st.us, 'µs', 'Pulse', 'Gripper pulse width', `min="${SERVO_MIN}" max="${SERVO_MAX}" step="10"`)}
+          ${num('settleMs', st.settleMs, 'ms', 'Settle', 'Settle time', 'min="0" step="100"')}` : `
+          ${num('ms', st.ms, 'ms', 'Duration', 'Wait time', 'min="0" step="100"')}`}
       </div>
       <div class="sacts">
         <button type="button" class="btn sm ghost" data-act="dup" title="Duplicate">&#10697;</button>
