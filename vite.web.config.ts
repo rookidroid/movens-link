@@ -11,6 +11,6 @@ export default defineConfig({
   resolve: { alias: { '@shared': resolve('src/shared') } },
   server: {
     port: +(process.env.PORT || 5180),
-    proxy: { '/robot': { target: `http://${host}`, rewrite: p => p.replace(/^\/robot/, '') } }
+    proxy: { '/robot': { target: `http://${host}`, rewrite: (p) => p.replace(/^\/robot/, '') } }
   }
 })

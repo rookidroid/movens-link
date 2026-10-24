@@ -16,14 +16,14 @@ type RunState = 'idle' | 'running' | 'paused' | 'error'
 
 export interface RunInfo {
   state: RunState
-  index: number        // step being executed (or next, when paused)
-  loop: number         // 1-based
-  loops: number        // 0 = endless
+  index: number // step being executed (or next, when paused)
+  loop: number // 1-based
+  loops: number // 0 = endless
   message: string
 }
 
 const POLL_MS = 150
-const START_GRACE_MS = 600   // a zero-length move never reports motion
+const START_GRACE_MS = 600 // a zero-length move never reports motion
 export const STEP_TIMEOUT_MS = 120000
 const GRIPPER_SETTLE_MS = 500
 
@@ -39,17 +39,21 @@ export class Runner {
   private now: () => number
 
   constructor(private deps: RunnerDeps) {
-    this.sleep = deps.sleep ?? (ms => new Promise(r => setTimeout(r, ms)))
+    this.sleep = deps.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)))
     this.now = deps.now ?? (() => Date.now())
   }
 
-  onUpdate(fn: (i: RunInfo) => void) { this.listeners.push(fn) }
+  onUpdate(fn: (i: RunInfo) => void) {
+    this.listeners.push(fn)
+  }
   private update(patch: Partial<RunInfo>) {
     Object.assign(this.info, patch)
     for (const fn of this.listeners) fn({ ...this.info })
   }
 
-  get busy() { return this.info.state === 'running' || this.info.state === 'paused' }
+  get busy() {
+    return this.info.state === 'running' || this.info.state === 'paused'
+  }
 
   /**
    * Play `seq` from step `from`. With single, run that one step only.
@@ -87,11 +91,19 @@ export class Runner {
   }
 
   /** Pause after the current step */
-  pause() { if (this.info.state === 'running') { this.pauseReq = true; this.update({ message: 'Pausing after this step…' }) } }
+  pause() {
+    if (this.info.state === 'running') {
+      this.pauseReq = true
+      this.update({ message: 'Pausing after this step…' })
+    }
+  }
 
   resume() {
     this.pauseReq = false
-    if (this.info.state === 'paused') { this.update({ state: 'running' }); this.resumeFn?.() }
+    if (this.info.state === 'paused') {
+      this.update({ state: 'running' })
+      this.resumeFn?.()
+    }
   }
 
   /** Abort the run and stop the motors */
@@ -106,7 +118,7 @@ export class Runner {
     if (this.abort) throw new Aborted()
     if (this.pauseReq) {
       this.update({ state: 'paused', index, loop, message: 'Paused' })
-      await new Promise<void>(r => (this.resumeFn = r))
+      await new Promise<void>((r) => (this.resumeFn = r))
       this.resumeFn = null
       if (this.abort) throw new Aborted()
     }
@@ -165,7 +177,7 @@ export class Runner {
       if (!r.ok) throw new Error(`Step ${i + 1}: ${r.status === 0 ? 'connection lost' : r.error}`)
       const st = r.data as Status
       this.deps.onStatus?.(st)
-      const moving = [1, 2, 3, 4, 5].some(j => st['m' + j])
+      const moving = [1, 2, 3, 4, 5].some((j) => st['m' + j])
       if (moving) seenMoving = true
       const elapsed = this.now() - t0
       if (!moving && (seenMoving || elapsed >= START_GRACE_MS)) return
@@ -176,8 +188,11 @@ export class Runner {
 
 function describeStep(s: Step, position: (id: string) => Position | undefined): string {
   switch (s.type) {
-    case 'move': return `Move to ${position(s.positionId)?.name ?? '(missing position)'} at ${s.speed}%`
-    case 'gripper': return `Gripper → ${s.us} µs`
-    case 'wait': return `Wait ${(s.ms / 1000).toFixed(1)} s`
+    case 'move':
+      return `Move to ${position(s.positionId)?.name ?? '(missing position)'} at ${s.speed}%`
+    case 'gripper':
+      return `Gripper → ${s.us} µs`
+    case 'wait':
+      return `Wait ${(s.ms / 1000).toFixed(1)} s`
   }
 }

@@ -11,8 +11,8 @@ import { Runner, type RunInfo } from '../lib/runner'
 
 let currentId: string | null = null
 let selStep = 0
-let ghost = false          // the ghost shows the selected step, not a pick in the Positions panel
-let quiet = false         // library change made by the step editor itself: keep focus, no re-render
+let ghost = false // the ghost shows the selected step, not a pick in the Positions panel
+let quiet = false // library change made by the step editor itself: keep focus, no re-render
 let dragFrom = -1
 
 const seqRunner = new Runner({
@@ -21,11 +21,18 @@ const seqRunner = new Runner({
   onStatus: publishStatus
 })
 
-const current = () => (currentId ? findSequence(currentId) ?? null : null)
+const current = () => (currentId ? (findSequence(currentId) ?? null) : null)
 
 export function initSequences() {
   $('seq-new').addEventListener('click', async () => {
-    const name = await promptText('New sequence', nextName('Sequence ', lib.sequences.map(s => s.name)), 'Create')
+    const name = await promptText(
+      'New sequence',
+      nextName(
+        'Sequence ',
+        lib.sequences.map((s) => s.name)
+      ),
+      'Create'
+    )
     if (!name) return
     const s: Sequence = { id: uid(), name, repeat: 1, steps: [], updatedAt: Date.now() }
     lib.sequences.push(s)
@@ -48,33 +55,45 @@ export function initSequences() {
   })
 
   $('seq-rename').addEventListener('click', async () => {
-    const s = current(); if (!s) return
+    const s = current()
+    if (!s) return
     const name = await promptText('Rename sequence', s.name, 'Rename')
-    if (name) { s.name = name; touch(s) }
+    if (name) {
+      s.name = name
+      touch(s)
+    }
   })
   $('seq-dup').addEventListener('click', () => {
-    const s = current(); if (!s) return
+    const s = current()
+    if (!s) return
     const copy: Sequence = { ...structuredClone(s), id: uid(), name: s.name + ' copy', updatedAt: Date.now() }
-    copy.steps.forEach(st => (st.id = uid()))
+    copy.steps.forEach((st) => (st.id = uid()))
     lib.sequences.splice(lib.sequences.indexOf(s) + 1, 0, copy)
     currentId = copy.id
     changed()
   })
   $('seq-export').addEventListener('click', async () => {
-    const s = current(); if (!s) return
+    const s = current()
+    if (!s) return
     if (await window.movens.library.exportJson(s.name, exportData(s))) showToast(`${s.name} exported`)
   })
   $('seq-del').addEventListener('click', async () => {
-    const s = current(); if (!s) return
-    if (!await confirmDialog(`Delete sequence "${s.name}"? Its positions stay in the library.`, 'Delete', true)) return
+    const s = current()
+    if (!s) return
+    if (!(await confirmDialog(`Delete sequence "${s.name}"? Its positions stay in the library.`, 'Delete', true)))
+      return
     lib.sequences.splice(lib.sequences.indexOf(s), 1)
     currentId = lib.sequences[0]?.id ?? null
     changed()
   })
   $('seq-repeat').addEventListener('input', () => {
-    const s = current(); if (!s) return
+    const s = current()
+    if (!s) return
     const v = parseInt($<HTMLInputElement>('seq-repeat').value)
-    if (Number.isFinite(v) && v >= 0) { s.repeat = v; touch(s, true) }
+    if (Number.isFinite(v) && v >= 0) {
+      s.repeat = v
+      touch(s, true)
+    }
   })
 
   $('add-move').addEventListener('click', () => {
@@ -83,13 +102,14 @@ export function initSequences() {
     addStep({ id: uid(), type: 'move', positionId: p.id, speed: 50, dwellMs: 0 })
   })
   $('add-grip').addEventListener('click', () =>
-    addStep({ id: uid(), type: 'gripper', us: state.status.servo ?? 1500, settleMs: 500 }))
+    addStep({ id: uid(), type: 'gripper', us: state.status.servo ?? 1500, settleMs: 500 })
+  )
   $('add-wait').addEventListener('click', () => addStep({ id: uid(), type: 'wait', ms: 1000 }))
 
   const list = $('steplist')
-  list.addEventListener('input', e => onStepInput(e.target as HTMLInputElement | HTMLSelectElement))
-  list.addEventListener('change', e => onStepInput(e.target as HTMLInputElement | HTMLSelectElement))
-  list.addEventListener('click', e => {
+  list.addEventListener('input', (e) => onStepInput(e.target as HTMLInputElement | HTMLSelectElement))
+  list.addEventListener('change', (e) => onStepInput(e.target as HTMLInputElement | HTMLSelectElement))
+  list.addEventListener('click', (e) => {
     const t = e.target as HTMLElement
     const row = t.closest<HTMLElement>('.step-row')
     if (!row) return
@@ -97,9 +117,13 @@ export function initSequences() {
     const act = t.closest<HTMLElement>('[data-act]')?.dataset.act
     claim()
     if (act) stepAction(i, act)
-    else if (!t.closest('input,select,label')) { selStep = i; renderSteps(); renderPath() }
+    else if (!t.closest('input,select,label')) {
+      selStep = i
+      renderSteps()
+      renderPath()
+    }
   })
-  list.addEventListener('focusin', e => {
+  list.addEventListener('focusin', (e) => {
     const row = (e.target as HTMLElement).closest<HTMLElement>('.step-row')
     if (!row || (+row.dataset.i! === selStep && ghost)) return
     selStep = +row.dataset.i!
@@ -107,7 +131,7 @@ export function initSequences() {
     markSelected()
     renderPath()
   })
-  list.addEventListener('dragstart', e => {
+  list.addEventListener('dragstart', (e) => {
     const row = (e.target as HTMLElement).closest<HTMLElement>('.step-row')
     if (!row) return
     dragFrom = +row.dataset.i!
@@ -116,16 +140,16 @@ export function initSequences() {
     e.dataTransfer!.setDragImage(row, 20, 20)
     row.classList.add('dragging')
   })
-  list.addEventListener('dragover', e => {
+  list.addEventListener('dragover', (e) => {
     if (dragFrom < 0) return
     e.preventDefault()
     const row = (e.target as HTMLElement).closest<HTMLElement>('.step-row')
-    list.querySelectorAll('.drop-before,.drop-after').forEach(x => x.classList.remove('drop-before', 'drop-after'))
+    list.querySelectorAll('.drop-before,.drop-after').forEach((x) => x.classList.remove('drop-before', 'drop-after'))
     if (!row) return
     const r = row.getBoundingClientRect()
     row.classList.add(e.clientY < r.top + r.height / 2 ? 'drop-before' : 'drop-after')
   })
-  list.addEventListener('drop', e => {
+  list.addEventListener('drop', (e) => {
     e.preventDefault()
     const row = (e.target as HTMLElement).closest<HTMLElement>('.step-row')
     const s = current()
@@ -140,8 +164,9 @@ export function initSequences() {
   })
   list.addEventListener('dragend', () => {
     dragFrom = -1
-    list.querySelectorAll('.dragging,.drop-before,.drop-after').forEach(x =>
-      x.classList.remove('dragging', 'drop-before', 'drop-after'))
+    list
+      .querySelectorAll('.dragging,.drop-before,.drop-after')
+      .forEach((x) => x.classList.remove('dragging', 'drop-before', 'drop-after'))
   })
 
   // ── Playback ────────────────────────────────────────────────────────────────
@@ -154,17 +179,22 @@ export function initSequences() {
   })
   $('run-stop').addEventListener('click', () => seqRunner.stop())
   $('run-validate').addEventListener('click', () => {
-    const s = current(); if (!s) return
+    const s = current()
+    if (!s) return
     const issues = validate(s)
     setMsg(issues.length ? '✕ ' + issues.join('\n✕ ') : `✓ ${s.steps.length} steps look OK`, issues.length > 0)
   })
   seqRunner.onUpdate(onRunUpdate)
   on('estop', () => seqRunner.stop())
 
-  on('library', () => { if (!quiet) render() })
+  on('library', () => {
+    if (!quiet) render()
+  })
   on('calib', () => renderPath())
-  on('preview', who => { if (who === 'position') ghost = false })
-  $('seq-card').addEventListener('toggle', () => renderPath())  // folded, its path leaves the 3D view
+  on('preview', (who) => {
+    if (who === 'position') ghost = false
+  })
+  $('seq-card').addEventListener('toggle', () => renderPath()) // folded, its path leaves the 3D view
   render()
 }
 
@@ -180,11 +210,15 @@ function touch(s: Sequence, keepFocus = false) {
   quiet = keepFocus
   changed()
   quiet = false
-  if (keepFocus) { renderList(); renderPath() }
+  if (keepFocus) {
+    renderList()
+    renderPath()
+  }
 }
 
 function addStep(st: Step) {
-  const s = current(); if (!s) return
+  const s = current()
+  if (!s) return
   const at = s.steps.length ? Math.min(selStep + 1, s.steps.length) : 0
   s.steps.splice(at, 0, st)
   selStep = at
@@ -193,11 +227,16 @@ function addStep(st: Step) {
 }
 
 function stepAction(i: number, act: string) {
-  const s = current(); if (!s) return
+  const s = current()
+  if (!s) return
   const st = s.steps[i]
-  if (act === 'dup') { s.steps.splice(i + 1, 0, { ...structuredClone(st), id: uid() }); selStep = i + 1 }
-  else if (act === 'del') { s.steps.splice(i, 1); selStep = Math.max(0, Math.min(selStep, s.steps.length - 1)) }
-  else return
+  if (act === 'dup') {
+    s.steps.splice(i + 1, 0, { ...structuredClone(st), id: uid() })
+    selStep = i + 1
+  } else if (act === 'del') {
+    s.steps.splice(i, 1)
+    selStep = Math.max(0, Math.min(selStep, s.steps.length - 1))
+  } else return
   touch(s)
 }
 
@@ -212,7 +251,11 @@ function onStepInput(el: HTMLInputElement | HTMLSelectElement) {
     const v = parseFloat(el.value)
     if (!Number.isFinite(v)) return
     const lim: Record<string, [number, number]> = {
-      speed: [1, 100], dwellMs: [0, 3600000], settleMs: [0, 60000], ms: [0, 3600000], us: [SERVO_MIN, SERVO_MAX]
+      speed: [1, 100],
+      dwellMs: [0, 3600000],
+      settleMs: [0, 60000],
+      ms: [0, 3600000],
+      us: [SERVO_MIN, SERVO_MAX]
     }
     const [lo, hi] = lim[f]
     st[f] = Math.round(Math.max(lo, Math.min(hi, v)))
@@ -243,46 +286,60 @@ function renderList() {
   const any = lib.sequences.length > 0
   el.hidden = !any
   $('seq-none').hidden = any
-  el.innerHTML = lib.sequences.map(s => `
-    <option value="${s.id}"${s.id === currentId ? ' selected' : ''}>${esc(s.name)} · ${s.steps.length} step${s.steps.length === 1 ? '' : 's'}</option>`).join('')
+  el.innerHTML = lib.sequences
+    .map(
+      (s) => `
+    <option value="${s.id}"${s.id === currentId ? ' selected' : ''}>${esc(s.name)} · ${s.steps.length} step${s.steps.length === 1 ? '' : 's'}</option>`
+    )
+    .join('')
 }
 
 function renderSteps() {
   const s = current()!
-  const opts = (sel: string) => lib.positions.map(p =>
-    `<option value="${p.id}"${p.id === sel ? ' selected' : ''}>${esc(p.name)}</option>`).join('') +
-    (findPosition(sel) ? '' : '<option value="" selected>(missing position)</option>')
+  const opts = (sel: string) =>
+    lib.positions
+      .map((p) => `<option value="${p.id}"${p.id === sel ? ' selected' : ''}>${esc(p.name)}</option>`)
+      .join('') + (findPosition(sel) ? '' : '<option value="" selected>(missing position)</option>')
   // A labelled value with its unit; the longer description shows as a tooltip
   const num = (f: string, v: number, unit: string, label: string, what: string, attrs = '') =>
     `<label class="sf sf-${f}" title="${what}"><span>${label}</span><span class="inp sm"><input type="number" data-f="${f}" value="${v}" ${attrs}/><i>${unit}</i></span></label>`
   const kind = { move: 'Move', gripper: 'Grip', wait: 'Wait' }
-  $('steplist').innerHTML = s.steps.length ? s.steps.map((st, i) => `
+  $('steplist').innerHTML = s.steps.length
+    ? s.steps
+        .map(
+          (st, i) => `
     <li class="step-row t-${st.type}" data-i="${i}">
       <span class="grip" draggable="true" title="Drag to reorder">&#8942;&#8942;</span>
       <span class="sn">${i + 1}</span>
       <span class="stype">${kind[st.type]}</span>
       <div class="sfields">${
-        st.type === 'move' ? `
+        st.type === 'move'
+          ? `
           <label class="sf sf-pos" title="Position to move to"><span>Position</span><select data-f="positionId">${opts(st.positionId)}</select></label>
           ${num('speed', st.speed, '%', 'Speed', 'Speed, percent of maximum', 'min="1" max="100" step="5"')}
-          ${num('dwellMs', st.dwellMs, 'ms', 'Dwell', 'Dwell after arriving', 'min="0" step="100"')}` :
-        st.type === 'gripper' ? `
+          ${num('dwellMs', st.dwellMs, 'ms', 'Dwell', 'Dwell after arriving', 'min="0" step="100"')}`
+          : st.type === 'gripper'
+            ? `
           ${num('us', st.us, 'µs', 'Pulse', 'Gripper pulse width', `min="${SERVO_MIN}" max="${SERVO_MAX}" step="10"`)}
-          ${num('settleMs', st.settleMs, 'ms', 'Settle', 'Settle time', 'min="0" step="100"')}` : `
-          ${num('ms', st.ms, 'ms', 'Duration', 'Wait time', 'min="0" step="100"')}`}
+          ${num('settleMs', st.settleMs, 'ms', 'Settle', 'Settle time', 'min="0" step="100"')}`
+            : `
+          ${num('ms', st.ms, 'ms', 'Duration', 'Wait time', 'min="0" step="100"')}`
+      }
       </div>
       <div class="sacts">
         <button type="button" class="btn sm ghost" data-act="dup" title="Duplicate">&#10697;</button>
         <button type="button" class="btn sm ghost danger-ink" data-act="del" title="Delete">&times;</button>
       </div>
-    </li>`).join('')
+    </li>`
+        )
+        .join('')
     : '<li class="empty">No steps yet. Add a move, gripper or wait step below.</li>'
   markSelected()
 }
 
 function markSelected() {
   const run = seqRunner.busy ? seqRunner.info.index : -1
-  document.querySelectorAll<HTMLElement>('#steplist .step-row').forEach(r => {
+  document.querySelectorAll<HTMLElement>('#steplist .step-row').forEach((r) => {
     const i = +r.dataset.i!
     r.classList.toggle('sel', i === selStep)
     r.classList.toggle('running', i === run)
@@ -342,7 +399,11 @@ async function run(from: number, single: boolean) {
   }
   claim()
   await seqRunner.run(s, { from, single })
-  if (single && seqRunner.info.state === 'idle') { selStep = seqRunner.info.index; markSelected(); renderPath() }
+  if (single && seqRunner.info.state === 'idle') {
+    selStep = seqRunner.info.index
+    markSelected()
+    renderPath()
+  }
 }
 
 function setMsg(text: string, err = false) {
@@ -381,5 +442,7 @@ function syncButtons() {
   $<HTMLButtonElement>('run-pause').disabled = !busy
   $('run-pause').innerHTML = st === 'paused' ? '&#9656; Resume' : '&#10073;&#10073; Pause'
   $<HTMLButtonElement>('run-stop').disabled = !busy
-  ;['seq-pick', 'seq-rename', 'seq-dup', 'seq-del', 'seq-new', 'seq-import'].forEach(id => ($<HTMLButtonElement>(id).disabled = busy))
+  ;['seq-pick', 'seq-rename', 'seq-dup', 'seq-del', 'seq-new', 'seq-import'].forEach(
+    (id) => ($<HTMLButtonElement>(id).disabled = busy)
+  )
 }

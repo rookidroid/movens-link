@@ -20,7 +20,7 @@ async function test() {
   const ms = Math.round(performance.now() - t0)
   if (!r.ok) return setRes(`✕ ${state.host}: ${r.error}`, true)
   const d = r.data as Status
-  const calibrated = [1, 2, 3, 4, 5].filter(i => d['a' + i] != null).length
+  const calibrated = [1, 2, 3, 4, 5].filter((i) => d['a' + i] != null).length
   setRes(`✓ ${state.host} answered in ${ms} ms · ${calibrated}/5 joints calibrated`)
 }
 
@@ -28,17 +28,20 @@ export async function initConnection() {
   const s = await window.movens.settings.get()
   setHost(s.host)
   $<HTMLInputElement>('set-host').value = s.host
-  $('set-form').addEventListener('submit', async e => {
+  $('set-form').addEventListener('submit', async (e) => {
     e.preventDefault()
     setRes('')
     if (await connect($<HTMLInputElement>('set-host').value.trim() || undefined)) test()
   })
   $('set-test').addEventListener('click', test)
   $('set-disconnect').addEventListener('click', () => disconnect())
-  on('host', h => { if (document.activeElement !== $('set-host')) $<HTMLInputElement>('set-host').value = h })
+  on('host', (h) => {
+    if (document.activeElement !== $('set-host')) $<HTMLInputElement>('set-host').value = h
+  })
 
   // The panel opens under the chip, and closes on a click anywhere else or Esc
-  const chip = $('btnConn'), pop = $('conn-pop')
+  const chip = $('btnConn'),
+    pop = $('conn-pop')
   let open = false
   const show = (v: boolean) => {
     open = v
@@ -47,8 +50,14 @@ export async function initConnection() {
     if (v) $<HTMLInputElement>('set-host').select()
   }
   chip.addEventListener('click', () => show(!open))
-  document.addEventListener('pointerdown', e => {
-    if (open && !(e.target as HTMLElement).closest('.conn-wrap')) show(false)
-  }, { capture: true })
-  window.addEventListener('keydown', e => { if (e.key === 'Escape' && open) show(false) })
+  document.addEventListener(
+    'pointerdown',
+    (e) => {
+      if (open && !(e.target as HTMLElement).closest('.conn-wrap')) show(false)
+    },
+    { capture: true }
+  )
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && open) show(false)
+  })
 }

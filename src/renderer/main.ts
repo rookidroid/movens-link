@@ -14,9 +14,9 @@ import { initSequences } from './views/sequences'
 // column covers. Below 900px the panels stack under the view instead.
 const stacked = matchMedia('(max-width: 899px)')
 function layoutStage() {
-  const col = (side: string) =>
-    stacked.matches ? null : document.querySelector<HTMLElement>(`.hud-${side}`)
-  const left = col('left'), right = col('right')
+  const col = (side: string) => (stacked.matches ? null : document.querySelector<HTMLElement>(`.hud-${side}`))
+  const left = col('left'),
+    right = col('right')
   const l = left?.offsetWidth ? left.offsetLeft + left.offsetWidth : 0
   const r = right?.offsetWidth ? $('stage').clientWidth - right.offsetLeft : 0
   armView().setInsets(l, r)
@@ -29,7 +29,7 @@ function layoutStage() {
 
 // Panels fold away, and start as they were left
 function initPanels() {
-  document.querySelectorAll<HTMLDetailsElement>('details[data-panel]').forEach(d => {
+  document.querySelectorAll<HTMLDetailsElement>('details[data-panel]').forEach((d) => {
     const key = 'panel.' + d.dataset.panel
     d.open = pref(key, true)
     d.addEventListener('toggle', () => setPref(key, d.open))
@@ -37,18 +37,23 @@ function initPanels() {
 }
 
 async function main() {
-  installWebBridge()  // no-op inside Electron
-  if (window.movens.platform) {  // the desktop app: frameless, with our own title strip
+  installWebBridge() // no-op inside Electron
+  if (window.movens.platform) {
+    // the desktop app: frameless, with our own title strip
     document.documentElement.classList.add('frameless', 'os-' + window.movens.platform)
     $('titlebar').hidden = false
   }
   $('btnStop').addEventListener('click', stopAll)
   // Esc is the E-stop everywhere, even while typing in a field
-  window.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !e.repeat) stopAll()
-  }, { capture: true })
+  window.addEventListener(
+    'keydown',
+    (e) => {
+      if (e.key === 'Escape' && !e.repeat) stopAll()
+    },
+    { capture: true }
+  )
   // Joints are calibrated on the robot's own web page: the links to it open in the browser
-  document.addEventListener('click', e => {
+  document.addEventListener('click', (e) => {
     if (!(e.target as HTMLElement).closest('a[href="#calibrate"]')) return
     e.preventDefault()
     window.open(`http://${state.host}/calibrate`, '_blank')
@@ -63,7 +68,7 @@ async function main() {
 
   layoutStage()
   const sizes = new ResizeObserver(layoutStage)
-  document.querySelectorAll('#stage, .hud-col, #appbar').forEach(el => sizes.observe(el))
+  document.querySelectorAll('#stage, .hud-col, #appbar').forEach((el) => sizes.observe(el))
   startPolling()
 }
 

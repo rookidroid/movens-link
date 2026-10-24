@@ -48,15 +48,14 @@ function createWindow() {
     if (/^https?:/.test(url)) shell.openExternal(url)
     return { action: 'deny' }
   })
-  win.webContents.on('will-navigate', e => e.preventDefault())
+  win.webContents.on('will-navigate', (e) => e.preventDefault())
 
   if (process.env.ELECTRON_RENDERER_URL) win.loadURL(process.env.ELECTRON_RENDERER_URL)
   else win.loadFile(join(here, '../renderer/index.html'))
 }
 
 function registerIpc() {
-  ipcMain.handle('robot:request', (_e, path: string, body?: unknown) =>
-    robotRequest(settings.host, path, body))
+  ipcMain.handle('robot:request', (_e, path: string, body?: unknown) => robotRequest(settings.host, path, body))
 
   ipcMain.handle('library:load', () => store.loadLibrary())
   ipcMain.handle('library:save', (_e, lib: Library) => store.saveLibrary(lib))
@@ -101,7 +100,9 @@ app.whenReady().then(async () => {
   if (process.env.MOVENS_HOST) settings.host = normalizeHost(process.env.MOVENS_HOST)
   registerIpc()
   createWindow()
-  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  })
 })
 
 app.on('window-all-closed', () => {

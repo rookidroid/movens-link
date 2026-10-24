@@ -8,7 +8,9 @@ import { DEFAULT_HOST, emptyLibrary, type Library, type Settings } from '../shar
 export class JsonStore {
   constructor(private dir: string) {}
 
-  private file(name: string) { return join(this.dir, name) }
+  private file(name: string) {
+    return join(this.dir, name)
+  }
 
   private async read<T>(name: string, fallback: T): Promise<T> {
     try {

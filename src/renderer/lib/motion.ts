@@ -7,12 +7,12 @@ import type { Calib, Pose, Position, Status } from '@shared/types'
 const J = [1, 2, 3, 4, 5]
 const isCal = (calib: Calib, i: number) => Math.abs(calib['j' + i]?.spd ?? 0) > 1e-6
 
-const fullyCalibrated = (calib: Calib) => J.every(i => isCal(calib, i))
+const fullyCalibrated = (calib: Calib) => J.every((i) => isCal(calib, i))
 
 function limitsOf(calib: Calib) {
   return {
-    lo: J.map(i => (calib['j' + i]?.limits ? calib['j' + i].min : -Infinity)),
-    hi: J.map(i => (calib['j' + i]?.limits ? calib['j' + i].max : Infinity))
+    lo: J.map((i) => (calib['j' + i]?.limits ? calib['j' + i].min : -Infinity)),
+    hi: J.map((i) => (calib['j' + i]?.limits ? calib['j' + i].max : Infinity))
   }
 }
 
@@ -30,7 +30,9 @@ export function moveCommand(p: Position, speedPct = 100): { path: string; body: 
   const j = p.joints!
   const key = j.unit === 'deg' ? 'a' : 'j'
   const body: Record<string, number> = { speed }
-  j.v.forEach((v, k) => { body[key + (k + 1)] = j.unit === 'deg' ? v : Math.round(v) })
+  j.v.forEach((v, k) => {
+    body[key + (k + 1)] = j.unit === 'deg' ? v : Math.round(v)
+  })
   return { path: '/movejoints', body }
 }
 
@@ -85,15 +87,16 @@ export function positionIssues(p: Position, calib: Calib, seed?: number[] | null
 
 /** Snapshot of the arm from a /status reply */
 export function capturePosition(st: Partial<Status>, id: string, name: string): Position {
-  const deg = J.map(i => st['a' + i])
-  const calibrated = deg.every(v => typeof v === 'number')
+  const deg = J.map((i) => st['a' + i])
+  const calibrated = deg.every((v) => typeof v === 'number')
   return {
-    id, name, kind: 'joints',
+    id,
+    name,
+    kind: 'joints',
     joints: calibrated
-      ? { unit: 'deg', v: (deg as number[]).map(v => +v.toFixed(2)) }
-      : { unit: 'steps', v: J.map(i => Number(st['j' + i] ?? 0)) },
-    pose: calibrated && st.x != null
-      ? { x: st.x!, y: st.y!, z: st.z!, pitch: st.pitch!, yaw: st.yaw } : undefined,
+      ? { unit: 'deg', v: (deg as number[]).map((v) => +v.toFixed(2)) }
+      : { unit: 'steps', v: J.map((i) => Number(st['j' + i] ?? 0)) },
+    pose: calibrated && st.x != null ? { x: st.x!, y: st.y!, z: st.z!, pitch: st.pitch!, yaw: st.yaw } : undefined,
     gripper: typeof st.servo === 'number' ? st.servo : null,
     updatedAt: Date.now()
   }
@@ -110,11 +113,15 @@ export function positionValues(p: Position): [string, string][] {
   const f = (v: number) => (Number.isFinite(v) ? v.toFixed(1) : '—')
   if (p.kind === 'pose' && p.pose) {
     const q = p.pose
-    return [['X', f(q.x)], ['Y', f(q.y)], ['Z', f(q.z)], ['Pitch', f(q.pitch) + '°'],
-      ...(q.yaw != null ? [['Yaw', f(q.yaw) + '°'] as [string, string]] : [])]
+    return [
+      ['X', f(q.x)],
+      ['Y', f(q.y)],
+      ['Z', f(q.z)],
+      ['Pitch', f(q.pitch) + '°'],
+      ...(q.yaw != null ? [['Yaw', f(q.yaw) + '°'] as [string, string]] : [])
+    ]
   }
   if (!p.joints) return []
   const deg = p.joints.unit === 'deg'
   return p.joints.v.map((v, k) => [`J${k + 1}`, deg ? f(v) + '°' : Number.isFinite(v) ? String(Math.round(v)) : '—'])
 }
-

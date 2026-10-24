@@ -6,12 +6,12 @@ import { forwardKinematics, inverseKinematics } from './kinematics'
 import { SERVO_MAX, SERVO_MIN, type JointCal } from './types'
 
 const N = 5
-const SPEED = 3000  // steps/s of a joint at full speed
+const SPEED = 3000 // steps/s of a joint at full speed
 
 interface Joint {
-  pos: number       // current steps (fractional while moving)
+  pos: number // current steps (fractional while moving)
   target: number
-  runSpeed: number  // speed of the move in progress
+  runSpeed: number // speed of the move in progress
 }
 
 // Plausible calibration: 1/16 microstepping through belt / gear reductions
@@ -23,7 +23,10 @@ const SIM_CALIBRATION: JointCal[] = [
   { spd: 26.67, home: 0, min: -110, max: 110, limits: true }
 ]
 
-export interface SimReply { status: number; data: any }
+export interface SimReply {
+  status: number
+  data: any
+}
 
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : NaN)
 const isCal = (c: JointCal) => Math.abs(c.spd) > 1e-6
@@ -41,9 +44,10 @@ export class SimRobot {
   constructor(opts: { calibrated?: boolean; now?: () => number } = {}) {
     this.now = opts.now ?? (() => Date.now())
     this.last = this.now()
-    this.cal = opts.calibrated === false
-      ? Array.from({ length: N }, () => ({ spd: 0, home: 0, min: -180, max: 180, limits: false }))
-      : SIM_CALIBRATION.map(c => ({ ...c }))
+    this.cal =
+      opts.calibrated === false
+        ? Array.from({ length: N }, () => ({ spd: 0, home: 0, min: -180, max: 180, limits: false }))
+        : SIM_CALIBRATION.map((c) => ({ ...c }))
   }
 
   private now: () => number
@@ -72,11 +76,14 @@ export class SimRobot {
     }
   }
 
-  private moving(j: Joint) { return Math.round(j.pos) !== j.target }
+  private moving(j: Joint) {
+    return Math.round(j.pos) !== j.target
+  }
 
   private clampSteps(c: JointCal, t: number) {
     if (!isCal(c) || !c.limits) return t
-    const a = degToSteps(c, c.min), b = degToSteps(c, c.max)
+    const a = degToSteps(c, c.min),
+      b = degToSteps(c, c.max)
     return Math.max(Math.min(a, b), Math.min(Math.max(a, b), t))
   }
 
@@ -87,8 +94,7 @@ export class SimRobot {
 
   // Like the firmware: all joints finish together, optionally slowed by scale
   private moveSync(targets: number[], scale = 1) {
-    const times = targets.map((t, i) =>
-      Math.abs(this.clampSteps(this.cal[i], t) - this.joints[i].pos) / SPEED)
+    const times = targets.map((t, i) => Math.abs(this.clampSteps(this.cal[i], t) - this.joints[i].pos) / SPEED)
     const tMax = Math.max(...times)
     targets.forEach((t, i) => {
       const k = tMax > 0 && times[i] > 0 ? times[i] / tMax : 1
@@ -99,13 +105,15 @@ export class SimRobot {
   private degrees(useTarget: boolean): number[] | null {
     if (!this.cal.every(isCal)) return null
     return this.joints.map((j, i) =>
-      stepsToDeg(this.cal[i], useTarget && this.moving(j) ? j.target : Math.round(j.pos)))
+      stepsToDeg(this.cal[i], useTarget && this.moving(j) ? j.target : Math.round(j.pos))
+    )
   }
 
   private status() {
     const s: Record<string, unknown> = {}
     this.joints.forEach((j, k) => {
-      const i = k + 1, pos = Math.round(j.pos)
+      const i = k + 1,
+        pos = Math.round(j.pos)
       s['j' + i] = pos
       s['a' + i] = isCal(this.cal[k]) ? +stepsToDeg(this.cal[k], pos).toFixed(2) : null
       s['m' + i] = this.moving(j) ? 1 : 0
@@ -124,16 +132,26 @@ export class SimRobot {
 
   private post = {
     '/stop': () => {
-      for (const j of this.joints) { j.target = Math.round(j.pos); j.pos = j.target }
+      for (const j of this.joints) {
+        j.target = Math.round(j.pos)
+        j.pos = j.target
+      }
       return ok()
     },
-    '/home': () => { this.joints.forEach((_, i) => this.moveTo(i, 0)); return ok() },
-    '/servo': (b: any) => { this.servo = Math.max(SERVO_MIN, Math.min(SERVO_MAX, b.us | 0)); return ok() },
+    '/home': () => {
+      this.joints.forEach((_, i) => this.moveTo(i, 0))
+      return ok()
+    },
+    '/servo': (b: any) => {
+      this.servo = Math.max(SERVO_MIN, Math.min(SERVO_MAX, b.us | 0))
+      return ok()
+    },
     '/movejoints': (b: any) => {
-      const targets = this.joints.map(j => (this.moving(j) ? j.target : Math.round(j.pos)))
+      const targets = this.joints.map((j) => (this.moving(j) ? j.target : Math.round(j.pos)))
       let given = 0
       for (let i = 1; i <= N; i++) {
-        const d = num(b['a' + i]), s = num(b['j' + i])
+        const d = num(b['a' + i]),
+          s = num(b['j' + i])
         if (Number.isFinite(d)) {
           if (!isCal(this.cal[i - 1])) return err(409, `joint ${i} not calibrated`)
           targets[i - 1] = degToSteps(this.cal[i - 1], d)
@@ -149,16 +167,19 @@ export class SimRobot {
     },
     '/movepose': (b: any) => {
       const cur = this.degrees(true)
-      if (!cur) return err(409, `joint ${this.cal.findIndex(c => !isCal(c)) + 1} not calibrated`)
+      if (!cur) return err(409, `joint ${this.cal.findIndex((c) => !isCal(c)) + 1} not calibrated`)
       const t = { x: num(b.x), y: num(b.y), z: num(b.z), pitch: num(b.pitch), yaw: num(b.yaw) }
       if (![t.x, t.y, t.z, t.pitch].every(Number.isFinite)) return err(400, 'x, y, z and pitch are required')
-      const lo = this.cal.map(c => (c.limits ? c.min : -Infinity))
-      const hi = this.cal.map(c => (c.limits ? c.max : Infinity))
+      const lo = this.cal.map((c) => (c.limits ? c.min : -Infinity))
+      const hi = this.cal.map((c) => (c.limits ? c.max : Infinity))
       const r = inverseKinematics({ ...t, yaw: Number.isFinite(t.yaw) ? t.yaw : null }, cur, lo, hi)
       if (r.status === 'unreachable') return err(422, 'pose unreachable')
       if (r.status === 'limits') return err(422, 'pose outside joint limits')
-      this.moveSync(r.deg.map((d, i) => degToSteps(this.cal[i], d)), this.speedScale(b))
-      return ok({ ok: true, deg: r.deg.map(d => +d.toFixed(2)) })
+      this.moveSync(
+        r.deg.map((d, i) => degToSteps(this.cal[i], d)),
+        this.speedScale(b)
+      )
+      return ok({ ok: true, deg: r.deg.map((d) => +d.toFixed(2)) })
     }
   }
 }

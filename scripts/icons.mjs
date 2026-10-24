@@ -44,7 +44,7 @@ function ico(images) {
     header.writeUInt32LE(offset, e + 12)
     offset += png.length
   })
-  return Buffer.concat([header, ...images.map(i => i.png)])
+  return Buffer.concat([header, ...images.map((i) => i.png)])
 }
 
 app.whenReady().then(async () => {
