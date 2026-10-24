@@ -13,3 +13,23 @@ win:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
+  artifactName: Movens-Link-${version}-win-setup.${ext}
+portable:
+  artifactName: Movens-Link-${version}-win-portable.${ext}
+afterPack: scripts/adhoc-sign.mjs
+mac:
+  category: public.app-category.utilities
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+    - target: zip
+      arch: [x64, arm64]
+  artifactName: Movens-Link-${version}-mac-${arch}.${ext}
+linux:
+  category: Utility
+  target:
+    - target: AppImage
+      arch: [x64, arm64]
+    - target: tar.gz
+      arch: [x64, arm64]
+  artifactName: Movens-Link-${version}-linux-${arch}.${ext}

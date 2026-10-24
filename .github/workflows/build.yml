@@ -1,7 +1,7 @@
 name: Build and release
 
-# Every push to main and every PR builds the Windows installer and portable exe
-# as a workflow artifact. Pushing a tag like v0.2.0 also publishes them as a
+# Every push to main and every PR builds the app for Windows, macOS and Linux
+# as workflow artifacts. Pushing a tag like v0.2.0 also publishes them as a
 # GitHub release (the tag must match the version in package.json).
 
 on:
@@ -20,8 +20,28 @@ concurrency:
 
 jobs:
   build:
-    name: Build (Windows)
-    runs-on: windows-latest
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            target: --win
+            files: dist/*.exe
+          - name: macOS
+            os: macos-latest
+            target: --mac
+            files: |
+              dist/*.dmg
+              dist/*.zip
+          - name: Linux
+            os: ubuntu-latest
+            target: --linux
+            files: |
+              dist/*.AppImage
+              dist/*.tar.gz
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -39,11 +59,14 @@ jobs:
           fi
       - run: npm ci
       - run: npm run build
-      - run: npx electron-builder --win --publish never
+      - run: npx electron-builder ${{ matrix.target }} --publish never
+        env:
+          # No signing certificate: build unsigned instead of looking for one
+          CSC_IDENTITY_AUTO_DISCOVERY: false
       - uses: actions/upload-artifact@v7
         with:
-          name: movens-link-windows
-          path: dist/*.exe
+          name: movens-link-${{ runner.os }}
+          path: ${{ matrix.files }}
           if-no-files-found: error
 
   release:
@@ -56,9 +79,10 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          name: movens-link-windows
+          pattern: movens-link-*
           path: dist
+          merge-multiple: true
       - uses: softprops/action-gh-release@v3
         with:
-          files: dist/*.exe
+          files: dist/*
           generate_release_notes: true

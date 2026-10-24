@@ -105,12 +105,15 @@ npm run lint          # ESLint
 npm run format        # Prettier (format:check to only check; CSS and HTML are left as written)
 npm run diagrams      # redraw the joint direction diagrams in docs/joints/ from the 3D model
 npm run dist          # Windows installer + portable exe in dist/
+npm run dist:mac      # macOS dmg + zip (x64 and arm64), on a Mac
+npm run dist:linux    # Linux AppImage + tar.gz (x64 and arm64)
 ```
 
 CI runs lint, typecheck, the format check and the unit tests on every push and pull request, and builds the
-Windows installer and portable exe (downloadable from the run). To publish a release, set `version` in
-`package.json`, then push a matching tag (`git tag v0.2.0 && git push origin v0.2.0`): the build attaches both
-exes to a GitHub release. Dependabot opens weekly update PRs for npm packages and the workflows' actions.
+app for Windows (installer, portable exe), macOS (dmg, zip) and Linux (AppImage, tar.gz), downloadable from the
+run. To publish a release, set `version` in `package.json`, then push a matching tag
+(`git tag v0.2.0 && git push origin v0.2.0`): the build attaches all of them to a GitHub release. The macOS build
+is not signed with an Apple certificate or notarized, so on first launch right-click the app and choose **Open**. Dependabot opens weekly update PRs for npm packages and the workflows' actions.
 
 The positions and sequences library is stored in `%APPDATA%\Movens Link\library.json`.
 
