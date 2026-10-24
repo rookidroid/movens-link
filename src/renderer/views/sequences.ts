@@ -5,7 +5,7 @@ import { SERVO_MAX, SERVO_MIN, uid, type Sequence, type Step } from '@shared/typ
 import { armView } from '../lib/arm3d'
 import { $, emit, esc, on, publishStatus, request, showToast, state, statusDegrees } from '../lib/core'
 import { confirmDialog, promptText } from '../lib/dialog'
-import { changed, exportData, findPosition, findSequence, importData, lib, nextName } from '../lib/library'
+import { changed, exportData, findPosition, findSequence, importLibrary, lib, nextName } from '../lib/library'
 import { positionDegrees, positionIssues, positionToolPoint } from '../lib/motion'
 import { Runner, type RunInfo } from '../lib/runner'
 
@@ -36,7 +36,8 @@ export function initSequences() {
   $('seq-import').addEventListener('click', async () => {
     const data = await window.movens.library.importJson()
     if (data == null) return
-    const r = importData(data)
+    const r = await importLibrary(data)
+    if (r == null) return
     if (typeof r === 'string') return showToast(r, 'err')
     showToast(`Imported ${r.sequences} sequence(s), ${r.positions} position(s)`)
   })

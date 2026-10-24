@@ -38,14 +38,14 @@ export function promptText(title: string, value = '', okLabel = 'Save'): Promise
 }
 
 /** Yes / no question. Resolves true on confirm. */
-export function confirmDialog(message: string, okLabel = 'OK', danger = false): Promise<boolean> {
+export function confirmDialog(message: string, okLabel = 'OK', danger = false, cancelLabel = 'Cancel'): Promise<boolean> {
   return new Promise(resolve => {
     const d = open(`
       <div class="card-head"><h2>Confirm</h2></div>
       <div class="card-body">
         <p class="hint">${esc(message).replace(/\n/g, '<br/>')}</p>
         <div class="actions"><span class="grow"></span>
-          <button type="button" class="btn ghost" data-act="cancel">Cancel</button>
+          <button type="button" class="btn ghost" data-act="cancel">${esc(cancelLabel)}</button>
           <button type="button" class="btn ${danger ? 'danger' : 'primary'}" data-act="ok">${esc(okLabel)}</button>
         </div>
       </div>`, '[data-act=ok]')

@@ -105,12 +105,16 @@ export function poseFromDegrees(deg: number[]): Pose {
   return { x: r(f.x), y: r(f.y), z: r(f.z), pitch: r(f.pitch), yaw: r(f.yaw) }
 }
 
-export function describePosition(p: Position): string {
-  const f = (v: number, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : '—')
+/** A position's values as label / value pairs, for display */
+export function positionValues(p: Position): [string, string][] {
+  const f = (v: number) => (Number.isFinite(v) ? v.toFixed(1) : '—')
   if (p.kind === 'pose' && p.pose) {
     const q = p.pose
-    return `X ${f(q.x)}  Y ${f(q.y)}  Z ${f(q.z)}  P ${f(q.pitch)}°` + (q.yaw != null ? `  Yaw ${f(q.yaw)}°` : '')
+    return [['X', f(q.x)], ['Y', f(q.y)], ['Z', f(q.z)], ['Pitch', f(q.pitch) + '°'],
+      ...(q.yaw != null ? [['Yaw', f(q.yaw) + '°'] as [string, string]] : [])]
   }
-  if (!p.joints) return '—'
-  return p.joints.v.map((v, k) => `J${k + 1} ${p.joints!.unit === 'deg' ? f(v) + '°' : Math.round(v)}`).join('  ')
+  if (!p.joints) return []
+  const deg = p.joints.unit === 'deg'
+  return p.joints.v.map((v, k) => [`J${k + 1}`, deg ? f(v) + '°' : Number.isFinite(v) ? String(Math.round(v)) : '—'])
 }
+

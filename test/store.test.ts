@@ -66,4 +66,33 @@ describe('library import', () => {
     expect(importData({ hello: 1 })).toBe('Not a Movens Link file')
     expect(importData({ kind: 'moveo-link', positions: [], sequences: [] })).toEqual({ positions: 0, sequences: 0 })
   })
+
+  it('keeps position names unique', async () => {
+    const { lib, importData, putPosition, freePositionName } = await import('../src/renderer/lib/library')
+    lib.positions.length = 0
+    lib.sequences.length = 0
+    const pos = (id: string, name: string) =>
+      ({ id, name, kind: 'joints' as const, joints: { unit: 'deg' as const, v: [0, 0, 0, 0, 0] }, gripper: null, updatedAt: 0 })
+    lib.positions.push(pos('a', 'Home'), pos('b', 'Pick'))
+    lib.sequences.push({ id: 's', name: 'S', repeat: 1, updatedAt: 0, steps: [{ id: 'x', type: 'move', positionId: 'a', speed: 50, dwellMs: 0 }] })
+    expect(freePositionName('home')).toBe('home (2)')
+    expect(freePositionName('Place')).toBe('Place')
+
+    // A new position named like an existing one takes its place and its steps
+    putPosition(pos('c', ' HOME '))
+    expect(lib.positions.map(p => p.id)).toEqual(['c', 'b'])
+    expect((lib.sequences[0].steps[0] as any).positionId).toBe('c')
+
+    // Renaming onto another name replaces that one
+    putPosition({ ...lib.positions[1], name: 'Home' })
+    expect(lib.positions.map(p => p.id)).toEqual(['b'])
+    expect((lib.sequences[0].steps[0] as any).positionId).toBe('b')
+
+    // Imports keep both by default, or replace
+    const file = { kind: 'movens-link', positions: [pos('d', 'Home')], sequences: [] }
+    importData(file)
+    expect(lib.positions.map(p => p.name)).toEqual(['Home', 'Home (2)'])
+    importData({ ...file, positions: [pos('e', 'home')] }, true)
+    expect(lib.positions.map(p => p.id)).toEqual(['e', 'd'])
+  })
 })

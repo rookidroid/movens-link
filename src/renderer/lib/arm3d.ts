@@ -22,9 +22,8 @@ import {
   allCalibrated, api, cal, fmt, JOINT_NAMES, jointLimits, kick, on, pref, request, seg, setPref,
   showToast, state, statusDegrees
 } from './core'
-import { promptText } from './dialog'
 import { makeFloor } from './floor'
-import { changed, lib, nextName } from './library'
+import { askPositionName, changed, lib, nextName, putPosition } from './library'
 
 const Y_AXIS = new THREE.Vector3(0, 1, 0)
 const Z_AXIS = new THREE.Vector3(0, 0, 1)
@@ -985,7 +984,7 @@ export class ArmView {
 
   private async saveAsPosition() {
     let p: Position | null = null
-    const name = await promptText('Save as position', nextName('P', lib.positions.map(x => x.name)))
+    const name = await askPositionName('Save as position', nextName('P', lib.positions.map(x => x.name)))
     if (!name) return
     if (this.mode === 'tool') {
       if (this.toolSol?.status !== 'ok') return showToast('The target pose is not reachable', 'err')
@@ -997,7 +996,7 @@ export class ArmView {
             gripper: this.servo, updatedAt: Date.now() }
     }
     if (!p) return
-    lib.positions.push(p)
+    putPosition(p)
     changed()
     showToast(`Saved position ${name}`)
   }
