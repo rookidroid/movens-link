@@ -16,8 +16,8 @@ export interface Status {
 }
 
 export interface JointCal {
-  spd: number    // steps per degree, signed; 0 = not calibrated
-  home: number   // angle of the alignment pose (step 0)
+  spd: number // steps per degree, signed; 0 = not calibrated
+  home: number // angle of the alignment pose (step 0)
   min: number
   max: number
   limits: boolean
@@ -30,12 +30,12 @@ export interface Pose {
   y: number
   z: number
   pitch: number
-  yaw?: number | null  // missing / null = approach in the arm plane
+  yaw?: number | null // missing / null = approach in the arm plane
 }
 
 export interface JointValues {
   unit: 'deg' | 'steps'
-  v: number[]  // J1..J5
+  v: number[] // J1..J5
 }
 
 export interface Position {
@@ -44,7 +44,7 @@ export interface Position {
   kind: 'joints' | 'pose'
   joints?: JointValues
   pose?: Pose
-  gripper: number | null  // µs, null = leave the gripper as it is
+  gripper: number | null // µs, null = leave the gripper as it is
   note?: string
   updatedAt: number
 }
@@ -57,7 +57,7 @@ export type Step =
 export interface Sequence {
   id: string
   name: string
-  repeat: number  // 0 = loop until stopped
+  repeat: number // 0 = loop until stopped
   steps: Step[]
   updatedAt: number
 }
@@ -75,15 +75,14 @@ export interface Settings {
 /** Reply of a robot request, relayed from the main process */
 export interface ApiResult<T = any> {
   ok: boolean
-  status: number   // HTTP status, 0 = network error / timeout
+  status: number // HTTP status, 0 = network error / timeout
   data?: T
   error?: string
 }
 
 export const emptyLibrary = (): Library => ({ version: 1, positions: [], sequences: [] })
 
-export const uid = (): string =>
-  Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+export const uid = (): string => Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
 
 /** Bridge exposed by the preload script as window.movens */
 export interface MovensBridge {

@@ -5,50 +5,92 @@ import { forwardKinematics, inverseKinematics } from '@shared/kinematics'
 import { SERVO_MAX, SERVO_MIN, uid, type Position } from '@shared/types'
 import { armView } from '../lib/arm3d'
 import {
-  $, cal, emit, esc, fmt, isCal, jointLimits, on, pref, publishStatus, request, seg, setPref, showToast,
-  state, statusDegrees, type Seg
+  $,
+  cal,
+  emit,
+  esc,
+  fmt,
+  isCal,
+  jointLimits,
+  on,
+  pref,
+  publishStatus,
+  request,
+  seg,
+  setPref,
+  showToast,
+  state,
+  statusDegrees,
+  type Seg
 } from '../lib/core'
 import { confirmDialog } from '../lib/dialog'
 import {
-  askPositionName, changed, confirmReplace, exportData, findPosition, freePositionName, importLibrary, lib, nextName,
-  positionNamed, putPosition, sequencesUsing
+  askPositionName,
+  changed,
+  confirmReplace,
+  exportData,
+  findPosition,
+  freePositionName,
+  importLibrary,
+  lib,
+  nextName,
+  positionNamed,
+  putPosition,
+  sequencesUsing
 } from '../lib/library'
-import {
-  capturePosition, poseFromDegrees, positionDegrees, positionIssues, positionValues
-} from '../lib/motion'
+import { capturePosition, poseFromDegrees, positionDegrees, positionIssues, positionValues } from '../lib/motion'
 import { Runner } from '../lib/runner'
 
 let selected: string | null = null
-let draft: Position | null = null   // being edited; id may not be in the library yet
-let owns = false                    // the ghost shows this panel's pick, not a sequence step
+let draft: Position | null = null // being edited; id may not be in the library yet
+let owns = false // the ghost shows this panel's pick, not a sequence step
 let segKind: Seg<'joints' | 'pose'>
 let segUnit: Seg<'deg' | 'steps'>
 let segSpeed: Seg<number>
-let dragFrom = -1                   // index of the row being dragged
+let dragFrom = -1 // index of the row being dragged
 
 // Ad-hoc "Go": a one-step run, so the gripper is applied after the arm arrives
 const goRunner = new Runner({
   api: (p, b) => request(p, b),
-  position: id => (draft?.id === id ? draft : findPosition(id)),
+  position: (id) => (draft?.id === id ? draft : findPosition(id)),
   onStatus: publishStatus
 })
-goRunner.onUpdate(i => {
+goRunner.onUpdate((i) => {
   if (i.state === 'error') showToast(i.message.replace(/^Step 1: /, ''), 'err')
 })
 
 export function initPositions() {
-  segSpeed = seg($('seg-gospeed'), [[10, '10%'], [25, '25%'], [50, '50%'], [100, '100%']], pref('goSpeed', 50),
-    v => setPref('goSpeed', v))
+  segSpeed = seg(
+    $('seg-gospeed'),
+    [
+      [10, '10%'],
+      [25, '25%'],
+      [50, '50%'],
+      [100, '100%']
+    ],
+    pref('goSpeed', 50),
+    (v) => setPref('goSpeed', v)
+  )
 
   $('pos-teach').addEventListener('click', () => teachCurrent())
   $('pos-new-pose').addEventListener('click', () => {
     const deg = statusDegrees()
     const pose = deg ? poseFromDegrees(deg) : { x: 300, y: 0, z: 200, pitch: -90 }
     pose.yaw = null
-    openEditor({
-      id: uid(), name: nextName('P', lib.positions.map(p => p.name)), kind: 'pose', pose,
-      gripper: null, updatedAt: Date.now()
-    }, true)
+    openEditor(
+      {
+        id: uid(),
+        name: nextName(
+          'P',
+          lib.positions.map((p) => p.name)
+        ),
+        kind: 'pose',
+        pose,
+        gripper: null,
+        updatedAt: Date.now()
+      },
+      true
+    )
   })
   $('pos-export').addEventListener('click', async () => {
     if (!lib.positions.length) return showToast('Nothing to export', 'err')
@@ -56,7 +98,7 @@ export function initPositions() {
   })
   $('pos-import').addEventListener('click', doImport)
 
-  $('plist').addEventListener('click', e => {
+  $('plist').addEventListener('click', (e) => {
     const t = e.target as HTMLElement
     const row = t.closest<HTMLElement>('.prow')
     if (!row || t.closest('.grip')) return
@@ -75,18 +117,18 @@ export function initPositions() {
   // Drag a row by its grip to reorder the list
   const list = $('plist')
   const rowAt = (e: Event) => (e.target as HTMLElement).closest<HTMLElement>('.prow')
-  const clearDrop = () => list.querySelectorAll('.drop-before,.drop-after').forEach(x =>
-    x.classList.remove('drop-before', 'drop-after'))
-  list.addEventListener('dragstart', e => {
+  const clearDrop = () =>
+    list.querySelectorAll('.drop-before,.drop-after').forEach((x) => x.classList.remove('drop-before', 'drop-after'))
+  list.addEventListener('dragstart', (e) => {
     const row = rowAt(e)
     if (!row) return
-    dragFrom = lib.positions.findIndex(p => p.id === row.dataset.id)
+    dragFrom = lib.positions.findIndex((p) => p.id === row.dataset.id)
     e.dataTransfer!.effectAllowed = 'move'
     e.dataTransfer!.setData('text/plain', String(dragFrom))
     e.dataTransfer!.setDragImage(row, 20, 20)
     row.classList.add('dragging')
   })
-  list.addEventListener('dragover', e => {
+  list.addEventListener('dragover', (e) => {
     if (dragFrom < 0) return
     e.preventDefault()
     const row = rowAt(e)
@@ -95,13 +137,13 @@ export function initPositions() {
     const r = row.getBoundingClientRect()
     row.classList.add(e.clientY < r.top + r.height / 2 ? 'drop-before' : 'drop-after')
   })
-  list.addEventListener('drop', e => {
+  list.addEventListener('drop', (e) => {
     e.preventDefault()
     const row = rowAt(e)
     const from = dragFrom
     dragFrom = -1
     if (!row || from < 0) return
-    let to = lib.positions.findIndex(p => p.id === row.dataset.id)
+    let to = lib.positions.findIndex((p) => p.id === row.dataset.id)
     if (to < 0) return
     if (row.classList.contains('drop-after')) to++
     if (to > from) to--
@@ -109,17 +151,44 @@ export function initPositions() {
   })
   list.addEventListener('dragend', () => {
     dragFrom = -1
-    list.querySelectorAll('.dragging').forEach(x => x.classList.remove('dragging'))
+    list.querySelectorAll('.dragging').forEach((x) => x.classList.remove('dragging'))
     clearDrop()
   })
 
   // ── Editor ──────────────────────────────────────────────────────────────────
-  segKind = seg($('pe-kind'), [['joints', 'Joints'], ['pose', 'Tool pose']], 'joints', k => switchKind(k))
-  segUnit = seg($('pe-unit'), [['deg', 'Degrees'], ['steps', 'Steps']], 'deg', u => switchUnit(u))
-  $('pe-jfields').innerHTML = [1, 2, 3, 4, 5].map(i => `
-    <label class="field"><span>J${i}</span><span class="inp"><input type="number" step="any" id="pe-j${i}"/><i class="pe-u">°</i></span></label>`).join('')
-  $('pe-form').addEventListener('input', () => { readForm(); claim(); renderDraftInfo() })
-  $('pe-form').addEventListener('submit', e => { e.preventDefault(); saveDraft() })
+  segKind = seg(
+    $('pe-kind'),
+    [
+      ['joints', 'Joints'],
+      ['pose', 'Tool pose']
+    ],
+    'joints',
+    (k) => switchKind(k)
+  )
+  segUnit = seg(
+    $('pe-unit'),
+    [
+      ['deg', 'Degrees'],
+      ['steps', 'Steps']
+    ],
+    'deg',
+    (u) => switchUnit(u)
+  )
+  $('pe-jfields').innerHTML = [1, 2, 3, 4, 5]
+    .map(
+      (i) => `
+    <label class="field"><span>J${i}</span><span class="inp"><input type="number" step="any" id="pe-j${i}"/><i class="pe-u">°</i></span></label>`
+    )
+    .join('')
+  $('pe-form').addEventListener('input', () => {
+    readForm()
+    claim()
+    renderDraftInfo()
+  })
+  $('pe-form').addEventListener('submit', (e) => {
+    e.preventDefault()
+    saveDraft()
+  })
   $('pe-cancel').addEventListener('click', closeEditor)
   $('pe-from-arm').addEventListener('click', fillFromArm)
   $('pe-grip-on').addEventListener('change', () => {
@@ -129,8 +198,12 @@ export function initPositions() {
   })
 
   on('library', render)
-  on('calib', () => { render(); renderDraftInfo() })
-  on('preview', who => {  // a sequence step took the ghost
+  on('calib', () => {
+    render()
+    renderDraftInfo()
+  })
+  on('preview', (who) => {
+    // a sequence step took the ghost
     if (who !== 'step') return
     owns = false
     selected = null
@@ -142,7 +215,13 @@ export function initPositions() {
 /** Save the current arm position to the library */
 async function teachCurrent(): Promise<void> {
   if (state.status.j1 == null) return showToast('No position from the robot yet', 'err')
-  const name = await askPositionName('Save current position', nextName('P', lib.positions.map(p => p.name)))
+  const name = await askPositionName(
+    'Save current position',
+    nextName(
+      'P',
+      lib.positions.map((p) => p.name)
+    )
+  )
   if (!name) return
   const p = capturePosition(state.status, uid(), name)
   putPosition(p)
@@ -161,10 +240,11 @@ function render() {
     return
   }
   const seed = statusDegrees()
-  el.innerHTML = lib.positions.map(p => {
-    const issues = positionIssues(p, state.calib, seed)
-    const used = sequencesUsing(p.id).length
-    return `
+  el.innerHTML = lib.positions
+    .map((p) => {
+      const issues = positionIssues(p, state.calib, seed)
+      const used = sequencesUsing(p.id).length
+      return `
     <div class="prow${p.id === selected ? ' sel' : ''}" data-id="${p.id}">
       <span class="grip" draggable="true" title="Drag to reorder">&#8942;&#8942;</span>
       <div class="pmain">
@@ -175,7 +255,9 @@ function render() {
           ${used ? `<span class="badge" title="Used by ${used} sequence(s)">×${used}</span>` : ''}
           ${issues.length ? `<span class="badge warn" title="${esc(issues.join('\n'))}">! ${esc(issues[0])}</span>` : ''}
         </div>
-        <div class="pvals">${positionValues(p).map(([k, v]) => `<span><i>${k}</i>${esc(v)}</span>`).join('')}</div>
+        <div class="pvals">${positionValues(p)
+          .map(([k, v]) => `<span><i>${k}</i>${esc(v)}</span>`)
+          .join('')}</div>
         ${p.note ? `<div class="muted pnote">${esc(p.note)}</div>` : ''}
       </div>
       <button type="button" class="btn sm primary" data-act="go" title="Move there; a saved gripper value is applied after the arm arrives">Go</button>
@@ -186,7 +268,8 @@ function render() {
         <button type="button" class="btn sm ghost danger-ink" data-act="del" title="Delete">&times;</button>
       </div>
     </div>`
-  }).join('')
+    })
+    .join('')
   updatePreview()
 }
 
@@ -205,7 +288,7 @@ function claim() {
 }
 
 function updatePreview() {
-  const p = owns ? draft ?? (selected ? findPosition(selected) : null) : null
+  const p = owns ? (draft ?? (selected ? findPosition(selected) : null)) : null
   const deg = p ? positionDegrees(p, state.calib, statusDegrees()) : null
   $('pos-preview-name').textContent = p ? (deg ? `Ghost: ${p.name}` : `${p.name}: no preview`) : ''
   if (!owns) return
@@ -218,15 +301,22 @@ async function goTo(p: Position) {
   if (issues.length) return showToast(`${p.name}: ${issues[0]}`, 'err')
   if (goRunner.busy) await goRunner.stop()
   showToast(`Moving to ${p.name} at ${segSpeed.value}%`)
-  goRunner.run({ id: 'go', name: 'go', repeat: 1, updatedAt: 0,
-    steps: [{ id: 'go', type: 'move', positionId: p.id, speed: segSpeed.value, dwellMs: 0 }] })
+  goRunner.run({
+    id: 'go',
+    name: 'go',
+    repeat: 1,
+    updatedAt: 0,
+    steps: [{ id: 'go', type: 'move', positionId: p.id, speed: segSpeed.value, dwellMs: 0 }]
+  })
 }
 
-on('estop', () => { if (goRunner.busy) goRunner.stop() })
+on('estop', () => {
+  if (goRunner.busy) goRunner.stop()
+})
 
 async function reteach(p: Position) {
   if (state.status.j1 == null) return showToast('No position from the robot yet', 'err')
-  if (!await confirmDialog(`Replace "${p.name}" with the current arm position?`, 'Replace')) return
+  if (!(await confirmDialog(`Replace "${p.name}" with the current arm position?`, 'Replace'))) return
   const snap = capturePosition(state.status, p.id, p.name)
   if (p.kind === 'pose' && snap.pose) {
     p.pose = { ...snap.pose, yaw: p.pose?.yaw == null ? null : snap.pose.yaw }
@@ -241,7 +331,12 @@ async function reteach(p: Position) {
 }
 
 function duplicate(p: Position) {
-  const copy: Position = { ...structuredClone(p), id: uid(), name: freePositionName(p.name + ' copy'), updatedAt: Date.now() }
+  const copy: Position = {
+    ...structuredClone(p),
+    id: uid(),
+    name: freePositionName(p.name + ' copy'),
+    updatedAt: Date.now()
+  }
   lib.positions.splice(lib.positions.indexOf(p) + 1, 0, copy)
   changed()
 }
@@ -266,10 +361,10 @@ async function rename(p: Position) {
 async function remove(p: Position) {
   const seqs = sequencesUsing(p.id)
   const msg = seqs.length
-    ? `"${p.name}" is used by: ${seqs.map(s => s.name).join(', ')}.\nIts move steps will be removed from those sequences.`
+    ? `"${p.name}" is used by: ${seqs.map((s) => s.name).join(', ')}.\nIts move steps will be removed from those sequences.`
     : `Delete "${p.name}"?`
-  if (!await confirmDialog(msg, 'Delete', true)) return
-  for (const s of seqs) s.steps = s.steps.filter(st => !(st.type === 'move' && st.positionId === p.id))
+  if (!(await confirmDialog(msg, 'Delete', true))) return
+  for (const s of seqs) s.steps = s.steps.filter((st) => !(st.type === 'move' && st.positionId === p.id))
   lib.positions.splice(lib.positions.indexOf(p), 1)
   if (draft?.id === p.id) closeEditor()
   changed()
@@ -292,7 +387,7 @@ function openEditor(p: Position, fresh: boolean) {
   isNew = fresh
   if (!draft.joints) {
     const deg = statusDegrees() ?? [0, 0, 0, 0, 0]
-    draft.joints = { unit: 'deg', v: deg.map(v => +v.toFixed(2)) }
+    draft.joints = { unit: 'deg', v: deg.map((v) => +v.toFixed(2)) }
   }
   if (!draft.pose) draft.pose = { x: 300, y: 0, z: 200, pitch: -90, yaw: null }
   $('pe-title').textContent = fresh ? 'New position' : `Edit ${p.name}`
@@ -317,10 +412,22 @@ function writeForm() {
   const d = draft!
   inp('pe-name').value = d.name
   inp('pe-note').value = d.note ?? ''
-  segKind.set([['joints', 'Joints'], ['pose', 'Tool pose']], d.kind)
-  segUnit.set([['deg', 'Degrees'], ['steps', 'Steps']], d.joints!.unit)
+  segKind.set(
+    [
+      ['joints', 'Joints'],
+      ['pose', 'Tool pose']
+    ],
+    d.kind
+  )
+  segUnit.set(
+    [
+      ['deg', 'Degrees'],
+      ['steps', 'Steps']
+    ],
+    d.joints!.unit
+  )
   d.joints!.v.forEach((v, k) => (inp('pe-j' + (k + 1)).value = String(v)))
-  document.querySelectorAll('.pe-u').forEach(e => (e.textContent = d.joints!.unit === 'deg' ? '°' : 'st'))
+  document.querySelectorAll('.pe-u').forEach((e) => (e.textContent = d.joints!.unit === 'deg' ? '°' : 'st'))
   const q = d.pose!
   for (const k of ['x', 'y', 'z', 'pitch'] as const) inp('pe-' + k).value = String(r2(q[k]))
   inp('pe-yaw').value = q.yaw == null ? '' : String(r2(q.yaw))
@@ -336,11 +443,19 @@ function readForm() {
   if (!d) return
   d.name = inp('pe-name').value.trim()
   d.note = inp('pe-note').value.trim() || undefined
-  d.joints!.v = [1, 2, 3, 4, 5].map(i => val('pe-j' + i))
+  d.joints!.v = [1, 2, 3, 4, 5].map((i) => val('pe-j' + i))
   const yaw = val('pe-yaw')
-  d.pose = { x: val('pe-x'), y: val('pe-y'), z: val('pe-z'), pitch: val('pe-pitch'), yaw: Number.isFinite(yaw) ? yaw : null }
-  d.gripper = inp('pe-grip-on').checked && Number.isFinite(val('pe-grip'))
-    ? Math.max(SERVO_MIN, Math.min(SERVO_MAX, Math.round(val('pe-grip')))) : null
+  d.pose = {
+    x: val('pe-x'),
+    y: val('pe-y'),
+    z: val('pe-z'),
+    pitch: val('pe-pitch'),
+    yaw: Number.isFinite(yaw) ? yaw : null
+  }
+  d.gripper =
+    inp('pe-grip-on').checked && Number.isFinite(val('pe-grip'))
+      ? Math.max(SERVO_MIN, Math.min(SERVO_MAX, Math.round(val('pe-grip'))))
+      : null
 }
 
 function renderDraftInfo() {
@@ -381,9 +496,15 @@ function switchUnit(u: 'deg' | 'steps') {
   readForm()
   const j = draft!.joints!
   if (u === j.unit) return
-  const missing = [1, 2, 3, 4, 5].filter(i => !isCal(cal(i)))
+  const missing = [1, 2, 3, 4, 5].filter((i) => !isCal(cal(i)))
   if (missing.length) {
-    segUnit.set([['deg', 'Degrees'], ['steps', 'Steps']], j.unit)
+    segUnit.set(
+      [
+        ['deg', 'Degrees'],
+        ['steps', 'Steps']
+      ],
+      j.unit
+    )
     return showToast(`J${missing[0]} is not calibrated: can't convert`, 'err')
   }
   j.v = j.v.map((v, k) => {
@@ -416,10 +537,14 @@ async function saveDraft() {
   if (d.kind === 'joints' && !d.joints!.v.every(Number.isFinite)) return showToast('Enter all five joint values', 'err')
   if (d.kind === 'pose' && ![d.pose!.x, d.pose!.y, d.pose!.z, d.pose!.pitch].every(Number.isFinite))
     return showToast('Enter X, Y, Z and pitch', 'err')
-  if (other && !await confirmReplace(other)) return inp('pe-name').focus()
-  if (draft !== d) return  // closed while asking
+  if (other && !(await confirmReplace(other))) return inp('pe-name').focus()
+  if (draft !== d) return // closed while asking
   const clean: Position = {
-    id: d.id, name: d.name, kind: d.kind, gripper: d.gripper, updatedAt: Date.now(),
+    id: d.id,
+    name: d.name,
+    kind: d.kind,
+    gripper: d.gripper,
+    updatedAt: Date.now(),
     ...(d.note ? { note: d.note } : {}),
     ...(d.kind === 'joints' ? { joints: d.joints } : { pose: d.pose })
   }

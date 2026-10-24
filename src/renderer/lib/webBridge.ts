@@ -10,21 +10,37 @@ export function installWebBridge() {
   const bridge: MovensBridge = {
     async api(path, body): Promise<ApiResult> {
       try {
-        const r = await fetch('/robot' + path, body === undefined
-          ? { signal: AbortSignal.timeout(8000) }
-          : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(8000) })
+        const r = await fetch(
+          '/robot' + path,
+          body === undefined
+            ? { signal: AbortSignal.timeout(8000) }
+            : {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+                signal: AbortSignal.timeout(8000)
+              }
+        )
         const data = await r.json().catch(() => ({}))
         if (r.status >= 500 && !data.error) return { ok: false, status: 0, error: 'Robot unreachable' }
-        return r.ok ? { ok: true, status: r.status, data } : { ok: false, status: r.status, data, error: data.error || `HTTP ${r.status}` }
+        return r.ok
+          ? { ok: true, status: r.status, data }
+          : { ok: false, status: r.status, data, error: data.error || `HTTP ${r.status}` }
       } catch {
         return { ok: false, status: 0, error: 'Robot unreachable' }
       }
     },
     library: {
       async load(): Promise<Library> {
-        try { return { ...emptyLibrary(), ...JSON.parse(localStorage.getItem(LIB) || '{}') } } catch { return emptyLibrary() }
+        try {
+          return { ...emptyLibrary(), ...JSON.parse(localStorage.getItem(LIB) || '{}') }
+        } catch {
+          return emptyLibrary()
+        }
       },
-      async save(lib) { localStorage.setItem(LIB, JSON.stringify(lib)) },
+      async save(lib) {
+        localStorage.setItem(LIB, JSON.stringify(lib))
+      },
       async exportJson(name, data) {
         const a = document.createElement('a')
         a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }))
@@ -33,22 +49,30 @@ export function installWebBridge() {
         return true
       },
       importJson() {
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
           const inp = document.createElement('input')
           inp.type = 'file'
           inp.accept = '.json,application/json'
           inp.onchange = async () => {
             const f = inp.files?.[0]
             if (!f) return resolve(null)
-            try { resolve(JSON.parse(await f.text())) } catch { resolve({ error: 'Not a valid JSON file' }) }
+            try {
+              resolve(JSON.parse(await f.text()))
+            } catch {
+              resolve({ error: 'Not a valid JSON file' })
+            }
           }
           inp.click()
         })
       }
     },
     settings: {
-      async get() { return { host: 'dev proxy' } },
-      async set() { return { host: 'dev proxy' } }
+      async get() {
+        return { host: 'dev proxy' }
+      },
+      async set() {
+        return { host: 'dev proxy' }
+      }
     }
   }
   window.movens = bridge

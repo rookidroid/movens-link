@@ -10,17 +10,22 @@ export const v3 = (a: Vec3) => new THREE.Vector3(a[0], a[1], a[2])
 const Y_AXIS = new THREE.Vector3(0, 1, 0)
 
 // Dimensions, mm
-const GRIPPER_LEN = 80                // palm -> fingertips
-const BASE_H = 42, DECK_H = 68        // top of the fixed base, top of the turntable
-const TURN_R = 70                     // turntable radius
-const CAP = 5                         // thickness of a joint's end caps
-const ROLL_FROM = 78, ROLL_TO = 16    // the roll housing, before the wrist
-const MARKER = [16, 10, 14]           // J1 heading mark on the turntable
-const PALM = [100, 22, 32]            // across the jaws, along the tool, thick
+const GRIPPER_LEN = 80 // palm -> fingertips
+const BASE_H = 42,
+  DECK_H = 68 // top of the fixed base, top of the turntable
+const TURN_R = 70 // turntable radius
+const CAP = 5 // thickness of a joint's end caps
+const ROLL_FROM = 78,
+  ROLL_TO = 16 // the roll housing, before the wrist
+const MARKER = [16, 10, 14] // J1 heading mark on the turntable
+const PALM = [100, 22, 32] // across the jaws, along the tool, thick
 const FINGER = [8, GRIPPER_LEN - PALM[1] / 2, 20]
 
 // A part turned about +Y, running from y = 0 to y = len; place() poses it between two points
-interface Shape { geo: THREE.BufferGeometry; len: number }
+interface Shape {
+  geo: THREE.BufferGeometry
+  len: number
+}
 
 /** Solid of revolution through [radius, y] points. Each stretch of the profile
  *  keeps its own normals, so chamfers stay crisp while the sides stay smooth. */
@@ -32,12 +37,30 @@ function turned(len: number, profile: Array<[number, number]>): Shape {
 
 /** Chamfered rod, tapering from radius r0 to r1 */
 const rod = (r0: number, r1: number, len: number, c = 3) =>
-  turned(len, [[r0 - c, 0], [r0, c], [r1, len - c], [r1 - c, len]])
+  turned(len, [
+    [r0 - c, 0],
+    [r0, c],
+    [r1, len - c],
+    [r1 - c, len]
+  ])
 
 const SHAPES: Record<string, Shape> = {
-  base: turned(BASE_H, [[94, 0], [98, 4], [98, 9], [84, 13], [84, BASE_H - 4], [80, BASE_H]]),
+  base: turned(BASE_H, [
+    [94, 0],
+    [98, 4],
+    [98, 9],
+    [84, 13],
+    [84, BASE_H - 4],
+    [80, BASE_H]
+  ]),
   turntable: rod(TURN_R, TURN_R, DECK_H - BASE_H),
-  column: turned(KIN.D1 - DECK_H, [[50, 0], [54, 4], [54, 14], [40, 72], [40, KIN.D1 - DECK_H]]),
+  column: turned(KIN.D1 - DECK_H, [
+    [50, 0],
+    [54, 4],
+    [54, 14],
+    [40, 72],
+    [40, KIN.D1 - DECK_H]
+  ]),
   shoulder: rod(48, 48, 120, 5),
   shoulderCap: rod(34, 34, CAP, 1.5),
   upper: rod(32, 27, KIN.A2),
@@ -70,23 +93,49 @@ export class ArmModel {
   private m: Record<string, THREE.Mesh> = {}
 
   constructor(ghost: boolean) {
-    const mat = (o: THREE.MeshStandardMaterialParameters) => new THREE.MeshStandardMaterial({
-      roughness: 0.5, metalness: 0.1,
-      // A ghost close to the solid arm is drawn in front of it, rather than the two fighting over depth
-      ...(ghost ? { transparent: true, opacity: 0.32, depthWrite: false,
-                    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8 } : {}), ...o
-    })
+    const mat = (o: THREE.MeshStandardMaterialParameters) =>
+      new THREE.MeshStandardMaterial({
+        roughness: 0.5,
+        metalness: 0.1,
+        // A ghost close to the solid arm is drawn in front of it, rather than the two fighting over depth
+        ...(ghost
+          ? {
+              transparent: true,
+              opacity: 0.32,
+              depthWrite: false,
+              polygonOffset: true,
+              polygonOffsetFactor: -2,
+              polygonOffsetUnits: -8
+            }
+          : {}),
+        ...o
+      })
     this.body = mat({ color: 0xe3e8eb })
     this.hub = mat({ color: 0x2b353b, roughness: 0.62 })
     this.accent = mat({ color: 0x2ec5d8 })
     // name: [material, joint selected when the part is clicked (6: the gripper, which picks the tool)]
     const spec: Record<string, [THREE.Material, number]> = {
-      base: [this.hub, 1], turntable: [this.body, 1], marker: [this.accent, 1], column: [this.body, 1],
-      shoulder: [this.hub, 2], shoulderCapA: [this.accent, 2], shoulderCapB: [this.accent, 2], upper: [this.body, 2],
-      elbow: [this.hub, 3], elbowCapA: [this.accent, 3], elbowCapB: [this.accent, 3], forearm: [this.body, 3],
-      roll: [this.hub, 4], rollBand: [this.accent, 4],
-      wristHub: [this.hub, 5], wristHubCapA: [this.accent, 5], wristHubCapB: [this.accent, 5],
-      toolLink: [this.body, 5], palm: [this.hub, 6], fingerA: [this.body, 6], fingerB: [this.body, 6]
+      base: [this.hub, 1],
+      turntable: [this.body, 1],
+      marker: [this.accent, 1],
+      column: [this.body, 1],
+      shoulder: [this.hub, 2],
+      shoulderCapA: [this.accent, 2],
+      shoulderCapB: [this.accent, 2],
+      upper: [this.body, 2],
+      elbow: [this.hub, 3],
+      elbowCapA: [this.accent, 3],
+      elbowCapB: [this.accent, 3],
+      forearm: [this.body, 3],
+      roll: [this.hub, 4],
+      rollBand: [this.accent, 4],
+      wristHub: [this.hub, 5],
+      wristHubCapA: [this.accent, 5],
+      wristHubCapB: [this.accent, 5],
+      toolLink: [this.body, 5],
+      palm: [this.hub, 6],
+      fingerA: [this.body, 6],
+      fingerB: [this.body, 6]
     }
     for (const [name, [material, joint]] of Object.entries(spec)) {
       const shape = SHAPES[name.replace(/Cap[AB]$/, 'Cap')]
@@ -118,17 +167,23 @@ export class ArmModel {
   showApartFrom(other: ArmModel | null) {
     for (const [name, part] of Object.entries(this.m)) {
       const twin = other?.m[name]
-      part.visible = !twin || part.position.distanceTo(twin.position) > 0.5 ||
-        part.quaternion.angleTo(twin.quaternion) > 2e-3
+      part.visible =
+        !twin || part.position.distanceTo(twin.position) > 0.5 || part.quaternion.angleTo(twin.quaternion) > 2e-3
     }
   }
 
   update(deg: number[], servo: number) {
     const fr = jointFrames(deg)
     const m = this.m
-    const t1 = deg[0] * Math.PI / 180
-    const shoulder = v3(fr.shoulder), elbow = v3(fr.elbow), wrist = v3(fr.wrist), tool = v3(fr.tool)
-    const n = v3(fr.axes[1]), f = v3(fr.axes[3]), a5 = v3(fr.axes[4]), t = v3(fr.approach)
+    const t1 = (deg[0] * Math.PI) / 180
+    const shoulder = v3(fr.shoulder),
+      elbow = v3(fr.elbow),
+      wrist = v3(fr.wrist),
+      tool = v3(fr.tool)
+    const n = v3(fr.axes[1]),
+      f = v3(fr.axes[3]),
+      a5 = v3(fr.axes[4]),
+      t = v3(fr.approach)
     const up = (z: number) => new THREE.Vector3(0, 0, z)
     const at = (p: THREE.Vector3, dir: THREE.Vector3, d: number) => p.clone().addScaledVector(dir, d)
     // A joint housing centred on its axis, with a cap on each end
@@ -157,13 +212,20 @@ export class ArmModel {
 
     // The gripper: X across the jaws, Y along the tool
     const q = new THREE.Quaternion().setFromRotationMatrix(
-      new THREE.Matrix4().makeBasis(a5, t, new THREE.Vector3().crossVectors(a5, t)))
+      new THREE.Matrix4().makeBasis(a5, t, new THREE.Vector3().crossVectors(a5, t))
+    )
     m.palm.position.copy(palm)
     m.palm.quaternion.copy(q)
     // Opening grows with the pulse width (assumes more µs = more open)
-    const open = 10 + 60 * (Math.min(SERVO_MAX, Math.max(SERVO_MIN, servo)) - SERVO_MIN) / (SERVO_MAX - SERVO_MIN)
-    for (const [name, s] of [['fingerA', 1], ['fingerB', -1]] as const) {
-      m[name].position.copy(tool).addScaledVector(t, -FINGER[1] / 2).addScaledVector(a5, s * (open + FINGER[0]) / 2)
+    const open = 10 + (60 * (Math.min(SERVO_MAX, Math.max(SERVO_MIN, servo)) - SERVO_MIN)) / (SERVO_MAX - SERVO_MIN)
+    for (const [name, s] of [
+      ['fingerA', 1],
+      ['fingerB', -1]
+    ] as const) {
+      m[name].position
+        .copy(tool)
+        .addScaledVector(t, -FINGER[1] / 2)
+        .addScaledVector(a5, (s * (open + FINGER[0])) / 2)
       m[name].quaternion.copy(q)
     }
   }

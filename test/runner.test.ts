@@ -22,7 +22,10 @@ function fakeRobot(opts: { moveMs?: number; fail?: Record<string, ApiResult>; st
     calls,
     deps: {
       api,
-      sleep: async (ms: number) => { t += ms; await new Promise(res => setImmediate(res)) },
+      sleep: async (ms: number) => {
+        t += ms
+        await new Promise((res) => setImmediate(res))
+      },
       now: () => t
     },
     time: () => t
@@ -30,12 +33,32 @@ function fakeRobot(opts: { moveMs?: number; fail?: Record<string, ApiResult>; st
 }
 
 const P: Record<string, Position> = {
-  a: { id: 'a', name: 'A', kind: 'joints', joints: { unit: 'deg', v: [0, 10, 20, 0, 30] }, gripper: null, updatedAt: 0 },
-  b: { id: 'b', name: 'B', kind: 'pose', pose: { x: 300, y: 0, z: 200, pitch: -90, yaw: null }, gripper: 2000, updatedAt: 0 }
+  a: {
+    id: 'a',
+    name: 'A',
+    kind: 'joints',
+    joints: { unit: 'deg', v: [0, 10, 20, 0, 30] },
+    gripper: null,
+    updatedAt: 0
+  },
+  b: {
+    id: 'b',
+    name: 'B',
+    kind: 'pose',
+    pose: { x: 300, y: 0, z: 200, pitch: -90, yaw: null },
+    gripper: 2000,
+    updatedAt: 0
+  }
 }
 const position = (id: string) => P[id]
 const seq = (steps: Step[], repeat = 1): Sequence => ({ id: 's', name: 'S', repeat, steps, updatedAt: 0 })
-const move = (positionId: string, speed = 50, dwellMs = 0): Step => ({ id: positionId, type: 'move', positionId, speed, dwellMs })
+const move = (positionId: string, speed = 50, dwellMs = 0): Step => ({
+  id: positionId,
+  type: 'move',
+  positionId,
+  speed,
+  dwellMs
+})
 
 describe('Runner', () => {
   it('runs steps in order and waits for each move to finish', async () => {
@@ -43,7 +66,7 @@ describe('Runner', () => {
     const runner = new Runner({ ...r.deps, position })
     await runner.run(seq([move('a', 40), { id: 'w', type: 'wait', ms: 500 }, move('b', 100)]))
     expect(runner.info.state).toBe('idle')
-    expect(r.calls.map(c => c.path)).toEqual(['/movejoints', '/movepose', '/servo'])
+    expect(r.calls.map((c) => c.path)).toEqual(['/movejoints', '/movepose', '/servo'])
     expect(r.calls[0].body).toMatchObject({ a1: 0, a2: 10, a3: 20, a4: 0, a5: 30, speed: 0.4 })
     expect(r.calls[1].body).toMatchObject({ x: 300, y: 0, z: 200, pitch: -90, speed: 1 })
     expect(r.calls[1].body.yaw).toBeUndefined()
@@ -58,7 +81,7 @@ describe('Runner', () => {
     const r = fakeRobot({ moveMs: 100 })
     const runner = new Runner({ ...r.deps, position })
     await runner.run(seq([move('a')], 3))
-    expect(r.calls.filter(c => c.path === '/movejoints')).toHaveLength(3)
+    expect(r.calls.filter((c) => c.path === '/movejoints')).toHaveLength(3)
   })
 
   it('does not hang on zero-length moves', async () => {
@@ -72,8 +95,11 @@ describe('Runner', () => {
   it('runs a single step from the given index', async () => {
     const r = fakeRobot()
     const runner = new Runner({ ...r.deps, position })
-    await runner.run(seq([move('a'), { id: 'g', type: 'gripper', us: 900, settleMs: 100 }, move('b')]), { from: 1, single: true })
-    expect(r.calls.map(c => c.path)).toEqual(['/servo'])
+    await runner.run(seq([move('a'), { id: 'g', type: 'gripper', us: 900, settleMs: 100 }, move('b')]), {
+      from: 1,
+      single: true
+    })
+    expect(r.calls.map((c) => c.path)).toEqual(['/servo'])
     expect(runner.info.index).toBe(2)
   })
 
@@ -83,7 +109,7 @@ describe('Runner', () => {
     await runner.run(seq([move('a'), move('b'), move('a')]))
     expect(runner.info.state).toBe('error')
     expect(runner.info.message).toBe('Step 2: pose unreachable')
-    expect(r.calls.map(c => c.path)).toEqual(['/movejoints', '/movepose', '/stop'])
+    expect(r.calls.map((c) => c.path)).toEqual(['/movejoints', '/movepose', '/stop'])
   })
 
   it('fails when a position is missing', async () => {
@@ -107,29 +133,29 @@ describe('Runner', () => {
     const r = fakeRobot({ moveMs: 5000 })
     const runner = new Runner({ ...r.deps, position })
     const done = runner.run(seq([move('a'), move('b')]))
-    while (r.time() < 1000) await new Promise(res => setImmediate(res))  // mid-move
+    while (r.time() < 1000) await new Promise((res) => setImmediate(res)) // mid-move
     await runner.stop()
     await done
     expect(runner.info.state).toBe('idle')
     expect(runner.info.message).toBe('Stopped')
-    expect(r.calls.map(c => c.path)).toEqual(['/movejoints', '/stop'])
+    expect(r.calls.map((c) => c.path)).toEqual(['/movejoints', '/stop'])
   })
 
   it('pauses after the current step and resumes', async () => {
     const r = fakeRobot({ moveMs: 1000 })
     const runner = new Runner({ ...r.deps, position })
     const states: string[] = []
-    runner.onUpdate(i => states.push(i.state))
+    runner.onUpdate((i) => states.push(i.state))
     const done = runner.run(seq([move('a'), move('a'), move('a')]))
     runner.pause()
     // let it reach the pause point
-    for (let i = 0; i < 50 && runner.info.state !== 'paused'; i++) await new Promise(res => setTimeout(res, 0))
+    for (let i = 0; i < 50 && runner.info.state !== 'paused'; i++) await new Promise((res) => setTimeout(res, 0))
     expect(runner.info.state).toBe('paused')
     expect(runner.info.index).toBe(1)
-    expect(r.calls.filter(c => c.path === '/movejoints')).toHaveLength(1)
+    expect(r.calls.filter((c) => c.path === '/movejoints')).toHaveLength(1)
     runner.resume()
     await done
-    expect(r.calls.filter(c => c.path === '/movejoints')).toHaveLength(3)
+    expect(r.calls.filter((c) => c.path === '/movejoints')).toHaveLength(3)
     expect(states).toContain('paused')
     expect(runner.info.state).toBe('idle')
   })

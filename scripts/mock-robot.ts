@@ -25,10 +25,14 @@ createServer((req: IncomingMessage, res: ServerResponse) => {
   }
   if (req.method !== 'POST') return send(res, 404, { error: 'not found' })
   let raw = ''
-  req.on('data', c => (raw += c))
+  req.on('data', (c) => (raw += c))
   req.on('end', () => {
     let body: any = {}
-    try { body = raw ? JSON.parse(raw) : {} } catch { /* empty body */ }
+    try {
+      body = raw ? JSON.parse(raw) : {}
+    } catch {
+      /* empty body */
+    }
     const r = sim.handle(path, body)
     console.log('POST', path, raw, '->', r.status)
     send(res, r.status, r.data)

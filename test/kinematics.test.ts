@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { forwardKinematics, inverseKinematics, jointFrames, KIN, nearestReachable, type Vec3 } from '../src/shared/kinematics'
+import {
+  forwardKinematics,
+  inverseKinematics,
+  jointFrames,
+  KIN,
+  nearestReachable,
+  type Vec3
+} from '../src/shared/kinematics'
 
 const INF = [Infinity, Infinity, Infinity, Infinity, Infinity]
-const NINF = INF.map(v => -v)
+const NINF = INF.map((v) => -v)
 
 describe('forward kinematics', () => {
   it('points straight up with all joints at zero', () => {
@@ -38,7 +45,7 @@ describe('forward kinematics', () => {
 describe('inverse kinematics', () => {
   it('round-trips FK -> IK -> FK for random arm poses', () => {
     let seed = 7
-    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647
     for (let n = 0; n < 200; n++) {
       const deg = [rnd() * 300 - 150, rnd() * 160 - 80, rnd() * 220 - 110, rnd() * 300 - 150, rnd() * 200 - 100]
       const p = forwardKinematics(deg)
@@ -61,7 +68,9 @@ describe('inverse kinematics', () => {
   })
 
   it('reports unreachable poses', () => {
-    expect(inverseKinematics({ x: 2000, y: 0, z: 200, pitch: 0 }, [0, 0, 0, 0, 0], NINF, INF).status).toBe('unreachable')
+    expect(inverseKinematics({ x: 2000, y: 0, z: 200, pitch: 0 }, [0, 0, 0, 0, 0], NINF, INF).status).toBe(
+      'unreachable'
+    )
   })
 
   it('reports poses outside the joint limits', () => {
@@ -97,7 +106,11 @@ describe('nearest reachable pose', () => {
       expect(forwardKinematics(r.deg).pitch).toBeCloseTo(pitch, 6)
       expect(dist(f.wrist, f.shoulder)).toBeCloseTo(KIN.A2 + KIN.D4 - 0.5, 6)
       // the wrist moved straight toward the shoulder, so no reachable point is closer
-      const want = [target.x - KIN.D6 * f.approach[0], target.y - KIN.D6 * f.approach[1], target.z - KIN.D6 * f.approach[2]]
+      const want = [
+        target.x - KIN.D6 * f.approach[0],
+        target.y - KIN.D6 * f.approach[1],
+        target.z - KIN.D6 * f.approach[2]
+      ]
       expect(dist(want, f.shoulder)).toBeCloseTo(dist(want, f.wrist) + dist(f.wrist, f.shoulder), 6)
     }
   })
@@ -123,8 +136,11 @@ describe('nearest reachable pose', () => {
     expect(r.status).toBe('ok')
     if (r.status !== 'ok') return
     expect(r.clamped).toBe(true)
-    r.deg.forEach((v, i) => { expect(v).toBeGreaterThanOrEqual(lo[i]); expect(v).toBeLessThanOrEqual(hi[i]) })
-    expect(r.deg[1]).toBeCloseTo(hi[1] - 0.1, 2)  // on the J2 limit, less the margin
+    r.deg.forEach((v, i) => {
+      expect(v).toBeGreaterThanOrEqual(lo[i])
+      expect(v).toBeLessThanOrEqual(hi[i])
+    })
+    expect(r.deg[1]).toBeCloseTo(hi[1] - 0.1, 2) // on the J2 limit, less the margin
     expect(dist(jointFrames(r.deg).tool, r.pos)).toBeLessThan(1e-6)
     expect(forwardKinematics(r.deg).pitch).toBeCloseTo(s.pitch, 6)
     const goal = [target.x, target.y, target.z]

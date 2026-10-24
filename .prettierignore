@@ -1,0 +1,11 @@
+out/
+dist/
+node_modules/
+package-lock.json
+docs/
+build/
+logo/
+*.md
+# Compact hand-written style, kept as in the firmware's pages
+*.css
+*.html
