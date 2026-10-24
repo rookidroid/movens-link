@@ -8,10 +8,13 @@ import {
   $, cal, emit, esc, fmt, isCal, jointLimits, on, pref, publishStatus, request, seg, setPref, showToast,
   state, statusDegrees, type Seg
 } from '../lib/core'
-import { confirmDialog, promptText } from '../lib/dialog'
-import { changed, exportData, findPosition, importData, lib, nextName, sequencesUsing } from '../lib/library'
+import { confirmDialog } from '../lib/dialog'
 import {
-  capturePosition, describePosition, poseFromDegrees, positionDegrees, positionIssues
+  askPositionName, changed, confirmReplace, exportData, findPosition, freePositionName, importLibrary, lib, nextName,
+  positionNamed, putPosition, sequencesUsing
+} from '../lib/library'
+import {
+  capturePosition, poseFromDegrees, positionDegrees, positionIssues, positionValues
 } from '../lib/motion'
 import { Runner } from '../lib/runner'
 
@@ -97,10 +100,10 @@ export function initPositions() {
 /** Save the current arm position to the library */
 async function teachCurrent(): Promise<void> {
   if (state.status.j1 == null) return showToast('No position from the robot yet', 'err')
-  const name = await promptText('Save current position', nextName('P', lib.positions.map(p => p.name)))
+  const name = await askPositionName('Save current position', nextName('P', lib.positions.map(p => p.name)))
   if (!name) return
   const p = capturePosition(state.status, uid(), name)
-  lib.positions.push(p)
+  putPosition(p)
   changed()
   showToast(`Saved ${name}` + (p.joints?.unit === 'steps' ? ' (in steps: arm not calibrated)' : ''))
 }
@@ -129,7 +132,7 @@ function render() {
           ${used ? `<span class="badge" title="Used by ${used} sequence(s)">×${used}</span>` : ''}
           ${issues.length ? `<span class="badge warn" title="${esc(issues.join('\n'))}">! ${esc(issues[0])}</span>` : ''}
         </div>
-        <div class="pvals">${esc(describePosition(p))}</div>
+        <div class="pvals">${positionValues(p).map(([k, v]) => `<span><i>${k}</i>${esc(v)}</span>`).join('')}</div>
         ${p.note ? `<div class="muted pnote">${esc(p.note)}</div>` : ''}
       </div>
       <button type="button" class="btn sm primary" data-act="go" title="Move there; a saved gripper value is applied after the arm arrives">Go</button>
@@ -195,16 +198,17 @@ async function reteach(p: Position) {
 }
 
 function duplicate(p: Position) {
-  const copy: Position = { ...structuredClone(p), id: uid(), name: nextName(p.name + ' copy ', lib.positions.map(x => x.name)).replace(/ copy 1$/, ' copy'), updatedAt: Date.now() }
+  const copy: Position = { ...structuredClone(p), id: uid(), name: freePositionName(p.name + ' copy'), updatedAt: Date.now() }
   lib.positions.splice(lib.positions.indexOf(p) + 1, 0, copy)
   changed()
 }
 
 async function rename(p: Position) {
-  const name = await promptText('Rename position', p.name, 'Rename')
-  if (!name) return
+  const name = await askPositionName('Rename position', p.name, 'Rename', p.id)
+  if (!name || !findPosition(p.id)) return
   p.name = name
   p.updatedAt = Date.now()
+  putPosition(p)
   changed()
 }
 
@@ -223,7 +227,8 @@ async function remove(p: Position) {
 async function doImport() {
   const data = await window.movens.library.importJson()
   if (data == null) return
-  const r = importData(data)
+  const r = await importLibrary(data)
+  if (r == null) return
   if (typeof r === 'string') return showToast(r, 'err')
   showToast(`Imported ${r.positions} position(s), ${r.sequences} sequence(s)`)
 }
@@ -352,21 +357,22 @@ function fillFromArm() {
   renderDraftInfo()
 }
 
-function saveDraft() {
+async function saveDraft() {
   readForm()
   const d = draft!
   if (!d.name) return showToast('Enter a name', 'err')
+  const other = positionNamed(d.name, d.id)
   if (d.kind === 'joints' && !d.joints!.v.every(Number.isFinite)) return showToast('Enter all five joint values', 'err')
   if (d.kind === 'pose' && ![d.pose!.x, d.pose!.y, d.pose!.z, d.pose!.pitch].every(Number.isFinite))
     return showToast('Enter X, Y, Z and pitch', 'err')
+  if (other && !await confirmReplace(other)) return inp('pe-name').focus()
+  if (draft !== d) return  // closed while asking
   const clean: Position = {
     id: d.id, name: d.name, kind: d.kind, gripper: d.gripper, updatedAt: Date.now(),
     ...(d.note ? { note: d.note } : {}),
     ...(d.kind === 'joints' ? { joints: d.joints } : { pose: d.pose })
   }
-  const i = lib.positions.findIndex(p => p.id === d.id)
-  if (i >= 0) lib.positions[i] = clean
-  else lib.positions.push(clean)
+  putPosition(clean)
   selected = clean.id
   claim()
   showToast(`${isNew ? 'Added' : 'Saved'} ${clean.name}`)

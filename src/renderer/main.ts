@@ -38,6 +38,10 @@ function initPanels() {
 
 async function main() {
   installWebBridge()  // no-op inside Electron
+  if (window.movens.platform) {  // the desktop app: frameless, with our own title strip
+    document.documentElement.classList.add('frameless', 'os-' + window.movens.platform)
+    $('titlebar').hidden = false
+  }
   $('btnStop').addEventListener('click', stopAll)
   // Esc is the E-stop everywhere, even while typing in a field
   window.addEventListener('keydown', e => {

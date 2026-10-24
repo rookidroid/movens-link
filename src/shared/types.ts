@@ -87,6 +87,8 @@ export const uid = (): string =>
 
 /** Bridge exposed by the preload script as window.movens */
 export interface MovensBridge {
+  /** process.platform inside the desktop app (frameless window); unset in a browser */
+  platform?: string
   api(path: string, body?: unknown): Promise<ApiResult>
   library: {
     load(): Promise<Library>
