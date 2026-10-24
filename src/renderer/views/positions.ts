@@ -24,6 +24,7 @@ let owns = false                    // the ghost shows this panel's pick, not a 
 let segKind: Seg<'joints' | 'pose'>
 let segUnit: Seg<'deg' | 'steps'>
 let segSpeed: Seg<number>
+let dragFrom = -1                   // index of the row being dragged
 
 // Ad-hoc "Go": a one-step run, so the gripper is applied after the arm arrives
 const goRunner = new Runner({
@@ -58,7 +59,7 @@ export function initPositions() {
   $('plist').addEventListener('click', e => {
     const t = e.target as HTMLElement
     const row = t.closest<HTMLElement>('.prow')
-    if (!row) return
+    if (!row || t.closest('.grip')) return
     const p = findPosition(row.dataset.id!)
     if (!p) return
     const act = t.closest<HTMLElement>('[data-act]')?.dataset.act
@@ -69,6 +70,47 @@ export function initPositions() {
     else if (act === 'del') remove(p)
     else if (act === 'rename') rename(p)
     else select(p.id)
+  })
+
+  // Drag a row by its grip to reorder the list
+  const list = $('plist')
+  const rowAt = (e: Event) => (e.target as HTMLElement).closest<HTMLElement>('.prow')
+  const clearDrop = () => list.querySelectorAll('.drop-before,.drop-after').forEach(x =>
+    x.classList.remove('drop-before', 'drop-after'))
+  list.addEventListener('dragstart', e => {
+    const row = rowAt(e)
+    if (!row) return
+    dragFrom = lib.positions.findIndex(p => p.id === row.dataset.id)
+    e.dataTransfer!.effectAllowed = 'move'
+    e.dataTransfer!.setData('text/plain', String(dragFrom))
+    e.dataTransfer!.setDragImage(row, 20, 20)
+    row.classList.add('dragging')
+  })
+  list.addEventListener('dragover', e => {
+    if (dragFrom < 0) return
+    e.preventDefault()
+    const row = rowAt(e)
+    clearDrop()
+    if (!row) return
+    const r = row.getBoundingClientRect()
+    row.classList.add(e.clientY < r.top + r.height / 2 ? 'drop-before' : 'drop-after')
+  })
+  list.addEventListener('drop', e => {
+    e.preventDefault()
+    const row = rowAt(e)
+    const from = dragFrom
+    dragFrom = -1
+    if (!row || from < 0) return
+    let to = lib.positions.findIndex(p => p.id === row.dataset.id)
+    if (to < 0) return
+    if (row.classList.contains('drop-after')) to++
+    if (to > from) to--
+    reorder(from, to)
+  })
+  list.addEventListener('dragend', () => {
+    dragFrom = -1
+    list.querySelectorAll('.dragging').forEach(x => x.classList.remove('dragging'))
+    clearDrop()
   })
 
   // ── Editor ──────────────────────────────────────────────────────────────────
@@ -124,6 +166,7 @@ function render() {
     const used = sequencesUsing(p.id).length
     return `
     <div class="prow${p.id === selected ? ' sel' : ''}" data-id="${p.id}">
+      <span class="grip" draggable="true" title="Drag to reorder">&#8942;&#8942;</span>
       <div class="pmain">
         <div class="ptop">
           <button type="button" class="pname" data-act="rename" title="Rename">${esc(p.name)}</button>
@@ -200,6 +243,14 @@ async function reteach(p: Position) {
 function duplicate(p: Position) {
   const copy: Position = { ...structuredClone(p), id: uid(), name: freePositionName(p.name + ' copy'), updatedAt: Date.now() }
   lib.positions.splice(lib.positions.indexOf(p) + 1, 0, copy)
+  changed()
+}
+
+/** Move the position at index `from` to index `to` in the list */
+function reorder(from: number, to: number) {
+  if (from === to || to < 0 || to >= lib.positions.length) return
+  const [p] = lib.positions.splice(from, 1)
+  lib.positions.splice(to, 0, p)
   changed()
 }
 
