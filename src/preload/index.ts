@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { MovensBridge } from '../shared/types'
 
 const bridge: MovensBridge = {
+  platform: process.platform,
   api: (path, body) => ipcRenderer.invoke('robot:request', path, body),
   library: {
     load: () => ipcRenderer.invoke('library:load'),
