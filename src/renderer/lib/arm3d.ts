@@ -380,7 +380,7 @@ export class ArmView {
   }
 
   private updateGhost() {
-    let deg: number[] | null = null
+    let deg: number[] | null
     let bad = false
     if (this.mode === 'tool') {
       deg = this.toolSol?.status === 'ok' ? this.toolSol.deg : this.lastGoodSol
