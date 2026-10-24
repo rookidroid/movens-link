@@ -50,11 +50,14 @@ input[type=range]::-moz-range-thumb{width:12px;height:20px}
 
 /* ── Positions ─────────────────────────────────────────── */
 .plist{display:flex;flex-direction:column;border:1px solid var(--line);max-height:min(32vh,260px);overflow:auto}
-.prow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 8px;padding:6px 8px;
+.prow{display:grid;grid-template-columns:12px minmax(0,1fr) auto;align-items:center;gap:6px 8px;padding:6px 8px;
   border-top:1px solid var(--line);cursor:pointer}
 .prow:first-child{border-top:0}
 .prow:hover{background:var(--panel-2)}
 .prow.sel{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.prow.dragging{opacity:.4}
+.prow.drop-before{box-shadow:inset 0 2px 0 var(--accent)}
+.prow.drop-after{box-shadow:inset 0 -2px 0 var(--accent)}
 .pmain{display:flex;flex-direction:column;gap:2px;min-width:0}
 .ptop{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
 .pname{padding:0;font:700 13px var(--sans);color:var(--ink);background:none;border:0;text-align:left;overflow-wrap:anywhere}
